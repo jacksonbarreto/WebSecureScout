@@ -1,4 +1,3 @@
-import socket
 import unittest
 
 from unittest.mock import patch
@@ -32,6 +31,7 @@ class TestHTTPSChecker(unittest.TestCase):
     def test_check_forced_redirect_to_https_with_forced_redirect_HTTPS_by_status_code(self, mock_request):
         # Test a website with a forced redirect to HTTPS
         mock_request.return_value.status_code = 301
+        mock_request.return_value.headers = {'location': 'https://example.com/'}
         self.assertTrue(self.checker.check_forced_redirect_to_https())
 
     @patch('HTTPSChecker.requests.head')

@@ -3,6 +3,7 @@ import requests
 from tldextract import extract
 
 from helpers.URLValidator.URLValidator import URLValidator
+from helpers.utilities import lowercase_dict_keys
 
 
 class HTTPSChecker:
@@ -28,8 +29,9 @@ class HTTPSChecker:
     def DEFAULT_HEADER():
         return {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                               'Chrome/108.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,'
-                              'application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,'
-                              'application/signed-exchange;v=b3;q=0.9', 'Upgrade-Insecure-Requests': '1',
+                                                                          'application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,'
+                                                                          'application/signed-exchange;v=b3;q=0.9',
+                'Upgrade-Insecure-Requests': '1',
                 'Accept-Encoding': 'gzip, deflate', 'Connection': 'keep-alive',
                 'Accept-Language': 'en-GB,en;q=0.9,pt-BR;q=0.8,pt;q=0.7,en-US;q=0.6'}
 
@@ -102,12 +104,12 @@ class HTTPSChecker:
             if self.__has_https:
                 response = requests.head(f"http://{self.__website}", headers=self.__header, allow_redirects=False,
                                          verify=False, timeout=self.__timeout_limit)
-
+                lowercase_dict_keys(response.headers)
                 if response.status_code in HTTPSChecker.HTTP_REDIRECT_CODES() and \
-                        response.headers['location'].startswith("https://"):
+                        "location" in response.headers and response.headers['location'].startswith("https://"):
                     self.__location = response.headers['location']
                     self.__has_forced_redirect_to_https = True
-                elif "Strict-Transport-Security" in response.headers and \
+                elif "strict-transport-security" in response.headers and \
                         response.status_code == HTTPSChecker.HTTP_STATUS_CODE_OK():
                     self.__location = "https://" + self.__website
                     self.__has_forced_redirect_to_https = True
