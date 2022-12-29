@@ -107,6 +107,14 @@ class URLValidatorTest(unittest.TestCase):
         self.assertEqual(validator.get_url_without_protocol(), 'sub1.sub2.sub3.google.com?param1=value1&param2=value2'
                                                                '&param3=value3')
 
+    def test_invalid_url_with_port(self):
+        with self.assertRaises(ValueError):
+            self.validator = URLValidator('http://www.google.com:8080')
+        with self.assertRaises(ValueError):
+            self.validator = URLValidator('http://www.google.com:80')
+        with self.assertRaises(ValueError):
+            self.validator = URLValidator('http://www.google.com:443')
+
 
 if __name__ == '__main__':
     unittest.main()
