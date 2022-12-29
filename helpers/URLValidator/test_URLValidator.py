@@ -8,7 +8,7 @@ class URLValidatorTest(unittest.TestCase):
 
     def test_valid_url(self):
         self.validator = URLValidator('http://www.google.com')
-        self.assertEqual(self.validator.get_domain(), 'www.google.com')
+        self.assertEqual(self.validator.get_url(), 'www.google.com')
 
     def test_invalid_url(self):
         with self.assertRaises(ValueError):
@@ -16,7 +16,7 @@ class URLValidatorTest(unittest.TestCase):
 
     def test_valid_url_https(self):
         self.validator = URLValidator('https://www.google.com')
-        self.assertEqual(self.validator.get_domain(), 'www.google.com')
+        self.assertEqual(self.validator.get_url(), 'www.google.com')
 
     def test_invalid_url_https(self):
         with self.assertRaises(ValueError):
@@ -24,15 +24,27 @@ class URLValidatorTest(unittest.TestCase):
 
     def test_valid_url_without_protocol(self):
         self.validator = URLValidator('www.google.com')
-        self.assertEqual(self.validator.get_domain(), 'www.google.com')
+        self.assertEqual(self.validator.get_url(), 'www.google.com')
 
     def test_valid_url_without_www(self):
         self.validator = URLValidator('google.com')
-        self.assertEqual(self.validator.get_domain(), 'google.com')
+        self.assertEqual(self.validator.get_url(), 'google.com')
 
     def test_valid_url_with_path(self):
         validator = URLValidator('www.google.com/meet/20842')
-        self.assertEqual(validator.get_domain(), 'www.google.com')
+        self.assertEqual(validator.get_url(), 'www.google.com')
+
+    def test_relative_url(self):
+        with self.assertRaises(ValueError):
+            self.validator = URLValidator('/meet/20842')
+
+    def test_relative_url_with_protocol(self):
+        with self.assertRaises(ValueError):
+            self.validator = URLValidator('http:/meet/20842')
+
+    def test_relative_url_with_www(self):
+        with self.assertRaises(ValueError):
+            self.validator = URLValidator('www./meet/20842')
 
 
 if __name__ == '__main__':

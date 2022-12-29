@@ -60,7 +60,7 @@ class HTTPSChecker:
         return 'https_redirect_to_same_domain'
 
     def __init__(self, website, url_validator=URLValidator, timeout_limit=5, header=None):
-        self.__website = url_validator(website).get_domain()
+        self.__website = url_validator(website).get_url()
         self.__timeout_limit = timeout_limit
         self.__header = HTTPSChecker.DEFAULT_HEADER() if header is None else header
         self.__has_https = None
