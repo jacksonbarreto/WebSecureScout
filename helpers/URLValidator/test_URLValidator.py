@@ -104,7 +104,8 @@ class URLValidatorTest(unittest.TestCase):
 
     def test_url_with_multiple_subdomains_and_multiple_query_parameters(self):
         validator = URLValidator('http://sub1.sub2.sub3.google.com?param1=value1&param2=value2&param3=value3')
-        self.assertEqual(validator.get_url_without_protocol(), 'sub1.sub2.sub3.google.com?param1=value1&param2=value2&param3=value3')
+        self.assertEqual(validator.get_url_without_protocol(), 'sub1.sub2.sub3.google.com?param1=value1&param2=value2'
+                                                               '&param3=value3')
 
 
 if __name__ == '__main__':
