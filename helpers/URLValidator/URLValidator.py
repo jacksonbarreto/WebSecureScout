@@ -14,7 +14,7 @@ class URLValidator:
             r'(?:/\S*)?(?:\?[^\s#]*)?(?:#\S*)?$',  # optional slash, query parameters and fragment identifier
             re.IGNORECASE)
         if re.match(url_validation_regex, self.url):
-            self.domain = re.sub(r'^(?:https?://)?', '', self.url)
+            self.domain = re.sub(r'^(?:https?://)?|/$', '', self.url)
         else:
             raise ValueError("The provided URL '{}' is not valid. Please provide a valid URL in the format http("
                              "s)://domain.com or http(s)://public_IP_address, optionally including subdomain, path, "

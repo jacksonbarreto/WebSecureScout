@@ -115,6 +115,10 @@ class URLValidatorTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.validator = URLValidator('http://www.google.com:443')
 
+    def test_with_slash_at_end(self):
+        url_validator = URLValidator('http://example.com/')
+        self.assertEqual(url_validator.get_url_without_protocol(), 'example.com')
+
 
 if __name__ == '__main__':
     unittest.main()
