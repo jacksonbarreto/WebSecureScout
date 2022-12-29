@@ -11,7 +11,7 @@ class URLValidator:
             r'(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
             r'(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))'  # or IP 
             # with range check for each octet 
-            r'(?:/[^\s]*)?(?:\?[^\s#]*)?(?:#\S*)?$',  # optional slash, query parameters and fragment identifier
+            r'(?:/\S*)?(?:\?[^\s#]*)?(?:#\S*)?$',  # optional slash, query parameters and fragment identifier
             re.IGNORECASE)
         if re.match(url_validation_regex, self.url):
             self.domain = re.sub(r'^(?:https?://)?', '', self.url)
