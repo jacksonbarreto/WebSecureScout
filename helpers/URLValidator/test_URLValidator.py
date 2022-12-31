@@ -10,9 +10,25 @@ class URLValidatorTest(unittest.TestCase):
         self.validator = URLValidator('http://www.google.com')
         self.assertEqual(self.validator.get_url_without_protocol(), 'www.google.com')
 
+    def test_valid_url_with_end_slash(self):
+        self.validator = URLValidator('http://www.google.com/')
+        self.assertEqual(self.validator.get_url_without_protocol(), 'www.google.com')
+
     def test_invalid_url(self):
         with self.assertRaises(ValueError):
             self.validator = URLValidator('http:www.google.com')
+
+    def test_empty_url(self):
+        with self.assertRaises(ValueError):
+            self.validator = URLValidator('')
+
+    def test_invalid_none_url(self):
+        with self.assertRaises(ValueError):
+            self.validator = URLValidator(None)
+
+    def test_invalid_type_url(self):
+        with self.assertRaises(ValueError):
+            self.validator = URLValidator(3)
 
     def test_valid_url_https(self):
         self.validator = URLValidator('https://www.google.com')
@@ -62,6 +78,11 @@ class URLValidatorTest(unittest.TestCase):
         self.validator = URLValidator('http://23.253.163.0')
         self.assertEqual(self.validator.get_url_without_protocol(), '23.253.163.0')
 
+    def test_valid_public_ip_address_with_end_slash(self):
+        self.validator = URLValidator('http://8.8.8.8/')
+        self.assertEqual(self.validator.get_url_without_protocol(), '8.8.8.8')
+
+
     def test_invalid_ip_address_less_than_4_octets(self):
         with self.assertRaises(ValueError):
             self.validator = URLValidator('http://1.2.3')
@@ -86,6 +107,10 @@ class URLValidatorTest(unittest.TestCase):
         self.validator = URLValidator('http://www.google.com?q=test')
         self.assertEqual(self.validator.get_url_without_protocol(), 'www.google.com?q=test')
 
+    def test_valid_url_with_query_parameters_with_end_slash(self):
+        self.validator = URLValidator('http://www.google.com?q=test/')
+        self.assertEqual(self.validator.get_url_without_protocol(), 'www.google.com?q=test')
+
     def test_valid_url_with_multiple_query_parameters(self):
         self.validator = URLValidator('http://www.google.com?q=test&param2=value2')
         self.assertEqual(self.validator.get_url_without_protocol(), 'www.google.com?q=test&param2=value2')
@@ -104,6 +129,11 @@ class URLValidatorTest(unittest.TestCase):
 
     def test_url_with_multiple_subdomains_and_multiple_query_parameters(self):
         validator = URLValidator('http://sub1.sub2.sub3.google.com?param1=value1&param2=value2&param3=value3')
+        self.assertEqual(validator.get_url_without_protocol(), 'sub1.sub2.sub3.google.com?param1=value1&param2=value2'
+                                                               '&param3=value3')
+
+    def test_url_with_multiple_subdomains_and_multiple_query_parameters_with_end_slash(self):
+        validator = URLValidator('http://sub1.sub2.sub3.google.com?param1=value1&param2=value2&param3=value3/')
         self.assertEqual(validator.get_url_without_protocol(), 'sub1.sub2.sub3.google.com?param1=value1&param2=value2'
                                                                '&param3=value3')
 
