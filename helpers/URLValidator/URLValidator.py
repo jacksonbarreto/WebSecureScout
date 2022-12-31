@@ -2,7 +2,25 @@ import re
 
 
 class URLValidator:
-    def __init__(self, url):
+    def __init__(self, url: str):
+        """
+        Initialize a URLValidator object.
+
+        This method receives a string representing a URL and validates if it is a valid URL. If it is valid, it stores
+        the URL in the 'url' attribute of the URLValidator object. If it is not valid, it raises a ValueError.
+
+        The URL is considered valid if it has the format 'http(s)://domain.com' or 'http(s)://public_IP_address',
+        optionally including subdomain, path, query parameters, and fragment identifier. Private IP address ranges are
+        considered invalid.
+
+        :param url: The URL to be validated.
+        :type url: str
+        :raises ValueError: If the URL is not a string or if it is not a valid URL.
+        """
+        if url is None:
+            raise ValueError('URL attribute is required')
+        if not isinstance(url, str):
+            raise ValueError('URL attribute must be a string')
         self.url = url.strip()
         url_validation_regex = re.compile(
             r'^(?:(http)s?://)?'  # http:// or https:// (optional)
@@ -20,5 +38,11 @@ class URLValidator:
                              "s)://domain.com or http(s)://public_IP_address, optionally including subdomain, path, "
                              "query parameters, and fragment identifier.".format(self.url))
 
-    def get_url_without_protocol(self):
+    def get_url_without_protocol(self) -> str:
+        """
+        Return the domain of the URL string, without the protocol.
+
+        :return: The domain of the URL string.
+        :rtype: str
+        """
         return self.domain
