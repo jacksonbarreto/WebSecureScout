@@ -45,7 +45,7 @@ class SecurityLayerChecker:
             'certificate_info': {
                 'dns_caa': False,
                 'issuer': 'Example Issuer',
-                'key_size': 2048,
+                'key_size': 0,
                 'key_alg': 'Example RSA',
                 'signature_alg': 'Example SHA256withRSA',
                 'must_staple': False,
@@ -81,7 +81,7 @@ class SecurityLayerChecker:
         :return: The CN.
         :rtype: str
         """
-        match = re.search(r"CN=([^,]+)", issuer_or_subject)
+        match = re.search(r'CN=([^,]+)', issuer_or_subject)
         if match:
             return match.group(1)
         else:
@@ -108,11 +108,11 @@ class SecurityLayerChecker:
 
     @staticmethod
     def __REQUEST_INTERVAL() -> int:
-        return 60
+        return 40
 
     @staticmethod
     def __TIMEOUT_LIMIT() -> int:
-        return 3 * SecurityLayerChecker.__REQUEST_INTERVAL()
+        return 8 * SecurityLayerChecker.__REQUEST_INTERVAL()
 
     def __init__(self, website: str, url_validator: Type[URLValidator] = URLValidator, url_base_api: str = None,
                  params_request_api: Dict[str, str] = None):
@@ -159,6 +159,7 @@ class SecurityLayerChecker:
         :return: The result of the API request, as a dictionary.
         :rtype: dict
         :raises requests.exceptions.RequestException: If there is an issue with the API request.
+        :raises exceptions: If querying the API resulted in an error.
         """
         seconds = 0
         while True:
@@ -174,6 +175,8 @@ class SecurityLayerChecker:
                 self.__params_request_api['fromCache'] = 'on'
                 self.__params_request_api['maxAge'] = 1
             if self.__result_from_api['status'] == 'READY' or self.__result_from_api['status'] == 'ERROR':
+                if self.__result_from_api['status'] == 'ERROR':
+                    raise Exception('Querying the API resulted in an error.')
                 break
             time.sleep(SecurityLayerChecker.__REQUEST_INTERVAL())
             seconds += SecurityLayerChecker.__REQUEST_INTERVAL()
