@@ -1,4 +1,6 @@
 import socket
+from typing import Dict
+
 import requests
 from tldextract import extract
 
