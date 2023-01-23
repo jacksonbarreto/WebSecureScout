@@ -21,48 +21,48 @@ class HTTPSChecker:
         if there is a forced redirection to HTTPS, and if the redirection is for the same domain.
         """
         return {
-            HTTPSChecker.HAS_HTTPS_KEY(): None,
-            HTTPSChecker.FORCED_REDIRECT_KEY(): None,
-            HTTPSChecker.REDIRECT_SAME_DOMAIN_KEY(): None}
+            HTTPSChecker.has_https_key(): None,
+            HTTPSChecker.forced_redirect_key(): None,
+            HTTPSChecker.redirect_same_domain_key(): None}
 
     @staticmethod
-    def DEFAULT_HEADER():
+    def default_header():
         return {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                               'Chrome/108.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,'
-                                                                          'application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,'
-                                                                          'application/signed-exchange;v=b3;q=0.9',
+                              'application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,'
+                              'application/signed-exchange;v=b3;q=0.9',
                 'Upgrade-Insecure-Requests': '1',
                 'Accept-Encoding': 'gzip, deflate', 'Connection': 'keep-alive',
                 'Accept-Language': 'en-GB,en;q=0.9,pt-BR;q=0.8,pt;q=0.7,en-US;q=0.6'}
 
     @staticmethod
-    def HTTP_REDIRECT_CODES():
+    def http_redirect_codes():
         return 301, 302, 303, 307, 308
 
     @staticmethod
-    def HTTP_STATUS_CODE_OK():
+    def http_status_code_ok():
         return 200
 
     @staticmethod
-    def DEFAULT_HTTPS_PORT():
+    def default_https_port():
         return 443
 
     @staticmethod
-    def HAS_HTTPS_KEY():
+    def has_https_key():
         return 'has_https'
 
     @staticmethod
-    def FORCED_REDIRECT_KEY():
+    def forced_redirect_key():
         return 'forced_redirect_to_https'
 
     @staticmethod
-    def REDIRECT_SAME_DOMAIN_KEY():
+    def redirect_same_domain_key():
         return 'https_redirect_to_same_domain'
 
     def __init__(self, website, url_validator=URLValidator, timeout_limit=5, header=None):
         self.__website = url_validator(website).get_url_without_protocol()
         self.__timeout_limit = timeout_limit
-        self.__header = HTTPSChecker.DEFAULT_HEADER() if header is None else header
+        self.__header = HTTPSChecker.default_header() if header is None else header
         self.__has_https = None
         self.__has_forced_redirect_to_https = None
         self.__has_forced_redirect_to_same_domain = None
@@ -79,7 +79,7 @@ class HTTPSChecker:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(self.__timeout_limit)
             try:
-                sock.connect((self.__website, HTTPSChecker.DEFAULT_HTTPS_PORT()))
+                sock.connect((self.__website, HTTPSChecker.default_https_port()))
                 sock.shutdown(socket.SHUT_RDWR)
                 self.__has_https = True
             except ConnectionRefusedError:
@@ -103,14 +103,14 @@ class HTTPSChecker:
                 self.check_https()
             if self.__has_https:
                 response = requests.head(f"http://{self.__website}", headers=self.__header, allow_redirects=False,
-                                         verify=False, timeout=self.__timeout_limit)
+                                         timeout=self.__timeout_limit)
                 lowercase_dict_keys(response.headers)
-                if response.status_code in HTTPSChecker.HTTP_REDIRECT_CODES() and \
+                if response.status_code in HTTPSChecker.http_redirect_codes() and \
                         "location" in response.headers and response.headers['location'].startswith("https://"):
                     self.__location = response.headers['location']
                     self.__has_forced_redirect_to_https = True
                 elif "strict-transport-security" in response.headers and \
-                        response.status_code == HTTPSChecker.HTTP_STATUS_CODE_OK():
+                        response.status_code == HTTPSChecker.http_status_code_ok():
                     self.__location = "https://" + self.__website
                     self.__has_forced_redirect_to_https = True
                 else:
@@ -153,7 +153,7 @@ class HTTPSChecker:
         if self.__has_forced_redirect_to_same_domain is None:
             self.check_forced_redirect_to_same_domain()
         dictionary = HTTPSChecker.get_interface_dict()
-        dictionary[HTTPSChecker.HAS_HTTPS_KEY()] = self.__has_https
-        dictionary[HTTPSChecker.FORCED_REDIRECT_KEY()] = self.__has_forced_redirect_to_https
-        dictionary[HTTPSChecker.REDIRECT_SAME_DOMAIN_KEY()] = self.__has_forced_redirect_to_same_domain
+        dictionary[HTTPSChecker.has_https_key()] = self.__has_https
+        dictionary[HTTPSChecker.forced_redirect_key()] = self.__has_forced_redirect_to_https
+        dictionary[HTTPSChecker.redirect_same_domain_key()] = self.__has_forced_redirect_to_same_domain
         return dictionary

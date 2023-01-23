@@ -19,8 +19,8 @@ class TestHTTPSChecker(unittest.TestCase):
         self.assertFalse(self.checker.check_https())
 
     def test_get_interface_dict_success(self):
-        expected_keys = [HTTPSChecker.HAS_HTTPS_KEY(), HTTPSChecker.FORCED_REDIRECT_KEY(),
-                         HTTPSChecker.REDIRECT_SAME_DOMAIN_KEY()]
+        expected_keys = [HTTPSChecker.has_https_key(), HTTPSChecker.forced_redirect_key(),
+                         HTTPSChecker.redirect_same_domain_key()]
         expected_values = [None, None, None]
         interface_dict = self.checker.get_interface_dict()
         self.assertCountEqual(interface_dict.keys(), expected_keys)
@@ -73,6 +73,6 @@ class TestHTTPSChecker(unittest.TestCase):
         mock_request.return_value.status_code = 301
         mock_request.return_value.headers = {'location': 'https://example.com/'}
         result = self.checker.get_https_results()
-        self.assertTrue(result[HTTPSChecker.HAS_HTTPS_KEY()])
-        self.assertTrue(result[HTTPSChecker.FORCED_REDIRECT_KEY()])
-        self.assertTrue(result[HTTPSChecker.REDIRECT_SAME_DOMAIN_KEY()])
+        self.assertTrue(result[HTTPSChecker.has_https_key()])
+        self.assertTrue(result[HTTPSChecker.forced_redirect_key()])
+        self.assertTrue(result[HTTPSChecker.redirect_same_domain_key()])

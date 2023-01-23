@@ -1,7 +1,9 @@
 from typing import List, Dict, Any
 
+from requests.structures import CaseInsensitiveDict
 
-def lowercase_dict_keys(dictionary: Dict[str, Any]) -> Dict[str, Any]:
+
+def lowercase_dict_keys(dictionary: CaseInsensitiveDict[str, Any]) -> CaseInsensitiveDict[str, Any]:
     """
     Lowercase all the keys in the given dictionary.
 
