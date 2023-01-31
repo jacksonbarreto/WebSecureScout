@@ -28,6 +28,19 @@ class HTTPSChecker:
             HTTPSChecker.redirect_same_domain_key(): None}
 
     @staticmethod
+    def get_interface_list():
+        """
+        Returns the interface of the HTTPSChecker class in the form of a list. The list contains keys for the different
+        HTTPS-related information stored by the class, such as if the website has HTTPS enabled, if there is a forced
+        redirection to HTTPS, and if the redirection is for the same domain.
+        """
+        return [
+            HTTPSChecker.has_https_key(),
+            HTTPSChecker.forced_redirect_key(),
+            HTTPSChecker.redirect_same_domain_key()
+        ]
+
+    @staticmethod
     def default_header():
         return {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                               'Chrome/108.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,'
