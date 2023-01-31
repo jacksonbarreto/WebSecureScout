@@ -1,0 +1,11 @@
+district,county,url,grade,SSLv2.0,SSLv3.0,TLSv1.0,TLSv1.1,TLSv1.2,TLSv1.3,dns_caa,issuer,key_size,key_alg,signature_alg,must_staple,sct,subject,is_valid,cert_chain_trust,beast,heartbleed,poodle,freak,ccs_injection,lucky_minus20,ticket_bleed,bleichenbacher,zombie_poodle,golden_doodle,zero_length_padding_oracle,sleeping_poodle,poodle_tls
+Guarda,Aguiar da Beira,www.cm-aguiardabeira.pt,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Santarém,Alcanena,www.cm-alcanena.pt,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Faro,Albufeira,www.cm-albufeira.pt,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Évora,Alandroal,www.cm-alandroal.pt,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Santarém,Abrantes,www.cm-abrantes.pt,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Beja,Ourique,www.cm-ourique.pt,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Setúbal,Alcácer do Sal,www.cm-alcacerdosal.pt,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Leiria,Alcobaça,www.cm-alcobaca.pt,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Coimbra,Penacova,www.cm-penacova.pt,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Aveiro,Águeda,www.cm-agueda.pt,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,

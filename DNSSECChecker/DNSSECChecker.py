@@ -14,9 +14,9 @@ class DNSSECChecker:
             "dnssec_algorithm",
         ]
 
-    def __init__(self, uri):
+    def __init__(self, website):
         self.domain = None
-        self.__get_domain__(uri)
+        self.__get_domain__(website)
         self.nameserver = None
         self.ns_ip_address = None
         self.__sec_answer = None

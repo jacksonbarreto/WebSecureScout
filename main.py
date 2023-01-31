@@ -9,17 +9,13 @@ from SecurityLayerChecker.SecurityLayerChecker import SecurityLayerChecker
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python main.py [csv_file_name]")
+        print("Usage: python main.py [csv_file_name without file extension]")
         sys.exit(1)
 
     source_file_csv = sys.argv[1]
 
-    if not os.path.isfile(source_file_csv):
-        print(f"Error: File {source_file_csv} not found.")
-        sys.exit(1)
-
-    if not source_file_csv.endswith(".csv"):
-        print(f"Error: File {source_file_csv} is not a csv file.")
+    if not os.path.isfile(f'{source_file_csv}.csv'):
+        print(f"Error: File {source_file_csv}.csv not found.")
         sys.exit(1)
 
     engines = {
@@ -37,12 +33,12 @@ if __name__ == "__main__":
         },
         DNSSECChecker: {
             'method': 'get_information',
-            'parameters': {'timeout_limit': 160},
+            'parameters': None,
             'result_file_name': 'dnssec_analysis',
             'keys_interface_list': DNSSECChecker.get_interface_list()
         },
         SecurityLayerChecker: {
-            'method': 'check_security_layer',
+            'method': 'check_security_layer_in_list',
             'parameters': {'params_request_api': {
                 'host': '',
                 'publish': 'on',

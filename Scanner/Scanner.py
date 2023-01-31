@@ -1,3 +1,5 @@
+import traceback
+
 import pandas as pd
 import concurrent.futures
 import os.path
@@ -11,8 +13,7 @@ def scanner(file_name, result_file_name, engine_class, method_for_analysis, keys
 
     source_df = pd.read_csv(filepath_or_buffer=f'./{file_name}.csv', encoding=encoding, engine='python')
 
-    errors_dataframe = pd.DataFrame(source_df.columns)
-    errors_dataframe['error'] = ''
+    errors_dataframe = create_error_dataframe(source_df.columns)
 
     keys_dataframe_result = list(source_df.columns)
     keys_dataframe_result.extend(keys_interface_list)
@@ -34,6 +35,9 @@ def scanner(file_name, result_file_name, engine_class, method_for_analysis, keys
             with lock_result_dataframe:
                 add_row_to_dataframe(result_dataframe, analysis_result)
         except Exception as e:
+            #APAGAR
+            print(e)
+            traceback.print_exc()
             empty_row = {column: '' for column in keys_interface_list}
             empty_row.update({column: getattr(row, column) for column in source_df.columns})
             with lock_result_dataframe:
@@ -46,7 +50,7 @@ def scanner(file_name, result_file_name, engine_class, method_for_analysis, keys
                    in
                    source_df.itertuples()]
         for i, future in enumerate(concurrent.futures.as_completed(futures)):
-            print("analyzing record ", i + 1, "/", source_df_size)
+            print(f'{engine_class.__name__} - analyzing record {i + 1}/{source_df_size}')
 
     path_results = 'results/'
     if not os.path.exists(path_results):
@@ -64,4 +68,10 @@ def add_error_row_to_error_dataframe(dataframe, error_row, error_message):
     error_row = list(error_row)[1:]
     error_row.append(error_message)
     dataframe.loc[len(dataframe)] = error_row
+    return dataframe
+
+
+def create_error_dataframe(columns):
+    dataframe = pd.DataFrame(columns=columns)
+    dataframe['error'] = ''
     return dataframe
