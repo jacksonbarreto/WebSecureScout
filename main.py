@@ -5,6 +5,7 @@ from DNSSECChecker.DnssecChecker import DNSSECChecker
 from HTTPSChecker.HTTPSChecker import HTTPSChecker
 from Scanner.Scanner import scanner
 from SecurityHeadersChecker.SecurityHeadersChecker import SecurityHeadersChecker
+from SecurityLayerChecker.SecurityLayerChecker import SecurityLayerChecker
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -34,7 +35,24 @@ if __name__ == "__main__":
             'result_file_name': 'https_analysis',
             'keys_interface_list': HTTPSChecker.get_interface_list()
         },
-        DNSSECChecker: None
+        DNSSECChecker: {
+            'method': 'get_information',
+            'parameters': {'timeout_limit': 160},
+            'result_file_name': 'dnssec_analysis',
+            'keys_interface_list': DNSSECChecker.get_interface_list()
+        },
+        SecurityLayerChecker: {
+            'method': 'check_security_layer',
+            'parameters': {'params_request_api': {
+                'host': '',
+                'publish': 'on',
+                'startNew': 'off',
+                'fromCache': 'on',
+                'all': 'on'
+            }},
+            'result_file_name': 'security_layer_analysis',
+            'keys_interface_list': HTTPSChecker.get_interface_list()
+        }
     }
 
     for engine, config in engines.items():

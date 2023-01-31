@@ -3,6 +3,17 @@ from tldextract import extract
 
 
 class DnssecChecker:
+
+    @staticmethod
+    def get_interface_list():
+        return [
+            "dnssec_domain",
+            "dnssec_nameserver",
+            "has_dnssec",
+            "dnssec_is_valid",
+            "dnssec_algorithm",
+        ]
+
     def __init__(self, uri):
         self.domain = None
         self.__get_domain__(uri)
