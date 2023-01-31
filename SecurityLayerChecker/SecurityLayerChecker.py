@@ -6,6 +6,7 @@ import requests
 from requests import Timeout
 
 from helpers.URLValidator.URLValidator import URLValidator
+from helpers.utilities import flatten_dictionary
 
 
 class SecurityLayerChecker:
@@ -23,6 +24,16 @@ class SecurityLayerChecker:
             'fromCache': 'off',
             'all': 'on'
         }
+
+    @staticmethod
+    def get_interface_list() -> list[str]:
+        """
+          Returns the interface list used to store the results of the SSL/TLS analysis.
+
+          :return: The interface list with the structure for storing the SSL/TLS analysis results.
+          :rtype: list[str]
+        """
+        return list(flatten_dictionary(SecurityLayerChecker.get_interface_dict()))
 
     @staticmethod
     def get_interface_dict() -> Dict[str, Union[str, Dict[str, Union[bool, str]]]]:

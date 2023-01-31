@@ -51,7 +51,7 @@ if __name__ == "__main__":
                 'all': 'on'
             }},
             'result_file_name': 'security_layer_analysis',
-            'keys_interface_list': HTTPSChecker.get_interface_list()
+            'keys_interface_list': SecurityLayerChecker.get_interface_list()
         }
     }
 
