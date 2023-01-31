@@ -1,7 +1,7 @@
 import sys
 import os
 
-from DNSSECChecker.DnssecChecker import DNSSECChecker
+from DNSSECChecker.DNSSECChecker import DNSSECChecker
 from HTTPSChecker.HTTPSChecker import HTTPSChecker
 from Scanner.Scanner import scanner
 from SecurityHeadersChecker.SecurityHeadersChecker import SecurityHeadersChecker
