@@ -1,3 +1,4 @@
+import csv
 import sys
 import os
 
@@ -8,14 +9,30 @@ from SecurityHeadersChecker.SecurityHeadersChecker import SecurityHeadersChecker
 from SecurityLayerChecker.SecurityLayerChecker import SecurityLayerChecker
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python main.py [csv_file_name without file extension]")
+    if len(sys.argv) != 3:
+        print("Usage: python main.py [csv_file_name with .csv extension] [url_column_name]")
         sys.exit(1)
 
     source_file_csv = sys.argv[1]
+    url_column_name = sys.argv[2]
+    file_without_extension = source_file_csv.split(".csv")[0]
 
-    if not os.path.isfile(f'{source_file_csv}.csv'):
-        print(f"Error: File {source_file_csv}.csv not found.")
+    if not source_file_csv.endswith('.csv'):
+        print(f"Error: File {source_file_csv} does not have .csv extension.")
+        sys.exit(1)
+
+    if not os.path.isfile(source_file_csv):
+        print(f"Error: File {source_file_csv} not found.")
+        sys.exit(1)
+
+    # Check if the column exists in the csv file
+    with open(source_file_csv, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        headers = next(reader)
+        columns = headers
+
+    if url_column_name not in columns:
+        print(f"Error: Column {url_column_name} not found in {source_file_csv}.")
         sys.exit(1)
 
     engines = {
@@ -52,6 +69,6 @@ if __name__ == "__main__":
     }
 
     for engine, config in engines.items():
-        scanner(file_name=source_file_csv, result_file_name=config['result_file_name'], engine_class=engine,
-                method_for_analysis=config['method'], params=config['parameters'],
+        scanner(file_name=file_without_extension, result_file_name=config['result_file_name'], engine_class=engine,
+                method_for_analysis=config['method'], params=config['parameters'], url_column_name=url_column_name,
                 keys_interface_list=config['keys_interface_list'])

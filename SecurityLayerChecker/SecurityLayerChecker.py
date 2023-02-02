@@ -242,14 +242,12 @@ class SecurityLayerChecker:
     def __request_api1(self):
         """
         Make an API request using the specified parameters.
-
         :return: The result of the API request, as a dictionary.
         :rtype: dict
         :raises requests.exceptions.RequestException: If there is an issue with the API request.
         :raises exceptions: If querying the API resulted in an error.
         """
         seconds = 0
-
         while SecurityLayerChecker.current_assessments >= SecurityLayerChecker.max_assessments:
             time.sleep(1)
 
