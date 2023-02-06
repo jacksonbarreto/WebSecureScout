@@ -77,6 +77,7 @@ class TestSecurityLayerChecker(unittest.TestCase):
         self.checker = SecurityLayerChecker('https://www.example.com')
         self.mock_response = MagicMock()
         self.mock_response.status_code = 200
+        self.mock_response.headers = {'X-Current-Assessments': 1, 'X-Max-Assessments': 20}
         self.mock_request = MagicMock(spec=requests.get)
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")

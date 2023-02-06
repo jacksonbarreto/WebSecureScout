@@ -71,13 +71,13 @@ class SecurityLayerChecker:
             },
             'certificate_info': {
                 'dns_caa': False,
-                'issuer': 'Example Issuer',
+                'issuer': '',
                 'key_size': 0,
-                'key_alg': 'Example RSA',
-                'signature_alg': 'Example SHA256withRSA',
+                'key_alg': '',
+                'signature_alg': '',
                 'must_staple': False,
                 'sct': False,
-                'subject': 'Example Subject',
+                'subject': '',
                 'is_valid': False,
                 'cert_chain_trust': False
             },
@@ -287,7 +287,8 @@ class SecurityLayerChecker:
         self.__parse_supported_ssl_tls_protocols()
         self.__parse_cert_info()
         self.__parse_vulnerabilities()
-        self.__final_result['grade'] = self.__result_from_api['endpoints'][0]['grade']
+        if 'grade' in self.__result_from_api['endpoints'][0]:
+            self.__final_result['grade'] = self.__result_from_api['endpoints'][0]['grade']
 
     def __parse_supported_ssl_tls_protocols(self):
         if self.__result_from_api is None:
@@ -330,22 +331,23 @@ class SecurityLayerChecker:
         if self.__final_result is None:
             self.__parse_analysis_result()
 
-        cert = self.__result_from_api['certs'][0]
+        if len(self.__result_from_api['certs']) > 0:
+            cert = self.__result_from_api['certs'][0]
 
-        self.__final_result['certificate_info']['dns_caa'] = cert['dnsCaa']
-        self.__final_result['certificate_info']['issuer'] = \
-            SecurityLayerChecker.__get_cn_from_issuer_or_subject(cert['issuerSubject'])
-        self.__final_result['certificate_info']['key_size'] = cert['keySize']
-        self.__final_result['certificate_info']['key_alg'] = cert['keyAlg']
-        self.__final_result['certificate_info']['signature_alg'] = cert['sigAlg']
-        self.__final_result['certificate_info']['must_staple'] = cert['mustStaple']
-        self.__final_result['certificate_info']['sct'] = cert['sct']
-        self.__final_result['certificate_info']['subject'] = \
-            SecurityLayerChecker.__get_cn_from_issuer_or_subject(cert['subject'])
-        if cert['issues'] == 0:
-            self.__final_result['certificate_info']['is_valid'] = True
-        if self.__result_from_api['endpoints'][0]['details']['certChains'][0]['issues'] == 0:
-            self.__final_result['certificate_info']['cert_chain_trust'] = True
+            self.__final_result['certificate_info']['dns_caa'] = cert['dnsCaa']
+            self.__final_result['certificate_info']['issuer'] = \
+                SecurityLayerChecker.__get_cn_from_issuer_or_subject(cert['issuerSubject'])
+            self.__final_result['certificate_info']['key_size'] = cert['keySize']
+            self.__final_result['certificate_info']['key_alg'] = cert['keyAlg']
+            self.__final_result['certificate_info']['signature_alg'] = cert['sigAlg']
+            self.__final_result['certificate_info']['must_staple'] = cert['mustStaple']
+            self.__final_result['certificate_info']['sct'] = cert['sct']
+            self.__final_result['certificate_info']['subject'] = \
+                SecurityLayerChecker.__get_cn_from_issuer_or_subject(cert['subject'])
+            if cert['issues'] == 0:
+                self.__final_result['certificate_info']['is_valid'] = True
+            if self.__result_from_api['endpoints'][0]['details']['certChains'][0]['issues'] == 0:
+                self.__final_result['certificate_info']['cert_chain_trust'] = True
 
     def __parse_vulnerabilities(self):
         if self.__result_from_api is None:
@@ -355,19 +357,21 @@ class SecurityLayerChecker:
 
         details = self.__result_from_api['endpoints'][0]['details']
 
-        self.__final_result['vulnerabilities']['beast'] = details['vulnBeast']
-        self.__final_result['vulnerabilities']['heartbleed'] = details['heartbleed']
-        self.__final_result['vulnerabilities']['poodle'] = details['poodle']
-        self.__final_result['vulnerabilities']['freak'] = details['freak']
-        self.__get_ccs_vulnerability_result_description()
-        self.__get_lucky_minus20_vulnerability_result_description()
-        self.__get_ticket_bleed_vulnerability_result_description()
-        self.__get_bleichenbacher_vulnerability_result_description()
+        self.__get_zero_length_padding_oracle_vulnerability_result_description()
         self.__get_zombie_poodle_vulnerability_result_description()
         self.__get_golden_doodle_vulnerability_result_description()
-        self.__get_zero_length_padding_oracle_vulnerability_result_description()
         self.__get_sleeping_poodle_vulnerability_result_description()
-        self.__get_poodle_tls_vulnerability_result_description()
+
+        if self.__final_result['certificate_info']['is_valid'] is True:
+            self.__final_result['vulnerabilities']['beast'] = details['vulnBeast']
+            self.__final_result['vulnerabilities']['heartbleed'] = details['heartbleed']
+            self.__final_result['vulnerabilities']['poodle'] = details['poodle']
+            self.__final_result['vulnerabilities']['freak'] = details['freak']
+            self.__get_ccs_vulnerability_result_description()
+            self.__get_lucky_minus20_vulnerability_result_description()
+            self.__get_ticket_bleed_vulnerability_result_description()
+            self.__get_bleichenbacher_vulnerability_result_description()
+            self.__get_poodle_tls_vulnerability_result_description()
 
     def __get_ccs_vulnerability_result_description(self):
         vulnerability = self.__result_from_api['endpoints'][0]['details']['openSslCcs']

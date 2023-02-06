@@ -25,7 +25,6 @@ if __name__ == "__main__":
         print(f"Error: File {source_file_csv} not found.")
         sys.exit(1)
 
-    # Check if the column exists in the csv file
     with open(source_file_csv, 'r') as csvfile:
         reader = csv.reader(csvfile)
         headers = next(reader)
