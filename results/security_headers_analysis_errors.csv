@@ -1,3 +1,0 @@
-district,county,url,error
-Beja,Ourique,www.cm-ourique.pt,"HTTPSConnectionPool(host='www.cm-ourique.pt', port=443): Max retries exceeded with url: / (Caused by SSLError(SSLError(1, '[SSL: UNSUPPORTED_PROTOCOL] unsupported protocol (_ssl.c:997)')))"
-Coimbra,Penacova,www.cm-penacova.pt,"HTTPSConnectionPool(host='www.cm-penacova.pt', port=443): Max retries exceeded with url: / (Caused by SSLError(SSLError(1, '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:997)')))"

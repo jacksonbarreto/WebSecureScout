@@ -28,6 +28,16 @@ class SecurityLayerChecker:
             cls.current_assessments = value
 
     @staticmethod
+    def __update_api_usage_information(response):
+        """
+        Update the current and max assessments values.
+        :param response:
+        :return:
+        """
+        SecurityLayerChecker.update_current_assessments(response.headers.get('X-Current-Assessments'))
+        SecurityLayerChecker.update_max_assessments(response.headers.get('X-Max-Assessments'))
+
+    @staticmethod
     def get_default_url_base_api() -> str:
         return 'https://api.ssllabs.com/api/v3/analyze/'
 
@@ -99,6 +109,42 @@ class SecurityLayerChecker:
         }
 
     @staticmethod
+    def __check_response_status(response):
+        """
+        Check the status of the API response.
+
+        :param response: The API response.
+        :type response: requests.Response
+        :raises requests.exceptions.RequestException: If there is an issue with the API request.
+        :raises exceptions: If querying the API resulted in an error.
+        """
+        match response.status_code:
+            case 200:
+                response_json = response.json()
+                if 'status' in response_json:
+                    if (response_json['status']).lower() == 'error':
+                        raise Exception(f"The API request resulted in an error: {response.text}")
+                    elif (response_json['status']).lower() == 'ready':
+                        return True
+                    else:
+                        return False
+                else:
+                    return False
+            case 400:
+                raise ValueError(f"The API request is invalid: {response.text}")
+            case 403:
+                raise PermissionError(f"The API request is forbidden: {response.text}")
+            case 404:
+                raise ValueError(f"The API request is not found: {response.text}")
+            case 429:
+                raise Exception(f"The API request has been throttled: {response.text}")
+            case 500:
+                raise Exception(
+                    f"The API server encountered an error while processing the request: {response.text}")
+            case _:
+                raise Exception(f"An unknown error occurred while querying the API: {response.text}")
+
+    @staticmethod
     def __get_cn_from_issuer_or_subject(issuer_or_subject: str) -> str:
         """
         Extract the CN from the issuerSubject string.
@@ -132,6 +178,12 @@ class SecurityLayerChecker:
                                  f'is outside the scope of the documentation')
 
         return description
+
+    @staticmethod
+    def __check_timeout(seconds):
+        if seconds > SecurityLayerChecker.__TIMEOUT_LIMIT():
+            raise Timeout(f"The API response time has exceeded the {SecurityLayerChecker.__TIMEOUT_LIMIT()} "
+                          f"second limit.")
 
     @staticmethod
     def __REQUEST_INTERVAL() -> int:
@@ -179,7 +231,6 @@ class SecurityLayerChecker:
         self.__result_from_api = None
         self.__final_result = None
 
-    # refactoring the method __request_api
     def __request_api(self):
         """
         Make an API request using the specified parameters.
@@ -190,95 +241,39 @@ class SecurityLayerChecker:
         :raises exceptions: If querying the API resulted in an error.
         """
         seconds = 0
-        time.sleep(random.randint(6, 12))
-
-        while SecurityLayerChecker.current_assessments >= SecurityLayerChecker.max_assessments:
-            time.sleep(1)
+        time.sleep(random.randint(7, 30))
 
         while True:
-            if seconds > SecurityLayerChecker.__TIMEOUT_LIMIT():
-                raise Timeout(f"The API response time has exceeded the {SecurityLayerChecker.__TIMEOUT_LIMIT()} "
-                              f"second limit.")
+            SecurityLayerChecker.__check_timeout(seconds)
+            while SecurityLayerChecker.current_assessments >= SecurityLayerChecker.max_assessments:
+                time.sleep(1)
+                seconds += 1
+                SecurityLayerChecker.__check_timeout(seconds)
 
             response = self.__requests_object(url=self.__url_base_api, params=self.__params_request_api)
-            self.update_current_assessments(response.headers.get('X-Current-Assessments'))
-            self.update_max_assessments(response.headers.get('X-Max-Assessments'))
-            print(f'host: {self.__params_request_api["host"]}')
-            print(f"Current assessments (classe): {SecurityLayerChecker.current_assessments}")
-            print(f"Current assessments: {response.headers.get('X-Current-Assessments')}")
-            print(f"Max assessments(classe): {SecurityLayerChecker.max_assessments}")
-            print(f"Max assessments: {response.headers.get('X-Max-Assessments')}")
-            match response.status_code:
-                case 200:
-                    self.__result_from_api = response.json()
-                    if 'status' in self.__result_from_api:
-                        if self.__result_from_api['status'] == 'error':
-                            raise Exception(f"The API request resulted in an error: {response.text}")
-                        elif self.__result_from_api['status'] == 'ready':
-                            break
-
-                case 400:
-                    raise ValueError(f"The API request is invalid: {response.text}")
-                case 403:
-                    raise PermissionError(f"The API request is forbidden: {response.text}")
-                case 404:
-                    raise ValueError(f"The API request is not found: {response.text}")
-                case 429:
-                    raise Exception(f"The API request has been throttled: {response.text}")
-                case 500:
-                    raise Exception(
-                        f"The API server encountered an error while processing the request: {response.text}")
-                case _:
-                    raise Exception(f"An unknown error occurred while querying the API: {response.text}")
+            self.__update_api_usage_information(response)
+            # APAGAR
+            #print(f"response: {response.json()}")
+            #print(f"host: {self.__params_request_api['host']}")
+          #  print(f"Current assessments (classe): {SecurityLayerChecker.current_assessments}")
+          #  print(f"Current assessments: {response.headers.get('X-Current-Assessments')}")
+           # print(f"Max assessments(classe): {SecurityLayerChecker.max_assessments}")
+           # print(f"Max assessments: {response.headers.get('X-Max-Assessments')}")
+            if SecurityLayerChecker.__check_response_status(response):
+                self.__result_from_api = response.json()
+                break
 
             if seconds == 0:
-                del self.__params_request_api['startNew']
+               # print(f"seconds <FIRST TIME>: {seconds}")
+               # print(f"params <FIRST TIME>: {self.__params_request_api}")
+                self.__params_request_api['startNew'] = 'off'
                 self.__params_request_api['fromCache'] = 'on'
                 self.__params_request_api['maxAge'] = 1
 
-            time.sleep(SecurityLayerChecker.__REQUEST_INTERVAL())
             seconds += SecurityLayerChecker.__REQUEST_INTERVAL()
-
-    def __request_api1(self):
-        """
-        Make an API request using the specified parameters.
-        :return: The result of the API request, as a dictionary.
-        :rtype: dict
-        :raises requests.exceptions.RequestException: If there is an issue with the API request.
-        :raises exceptions: If querying the API resulted in an error.
-        """
-        seconds = 0
-        while SecurityLayerChecker.current_assessments >= SecurityLayerChecker.max_assessments:
-            time.sleep(1)
-
-        while True:
-            if seconds > SecurityLayerChecker.__TIMEOUT_LIMIT():
-                raise Timeout(f"The API response time has exceeded the {SecurityLayerChecker.__TIMEOUT_LIMIT()} "
-                              f"second limit.")
-
-            response = self.__requests_object(url=self.__url_base_api, params=self.__params_request_api)
-            match response.status_code:
-                case 400:
-                    raise Exception('The request was invalid.')
-                case 500:
-                    raise Exception('The API encountered an error.')
-                case 503:
-                    raise Exception('The API is currently unavailable.')
-                case 529:
-                    raise Exception('The API is currently unavailable due to a high load.')
-
-            self.update_current_assessments(response.headers.get('X-Current-Assessments', 0))
-            self.update_max_assessments(response.headers.get('X-Max-Assessments', 0))
-            self.__result_from_api = response.json()
-            print(self.__result_from_api)
-            time.sleep(10)
-            if self.__result_from_api['status'] == 'READY' or self.__result_from_api['status'] == 'ERROR':
-                if self.__result_from_api['status'] == 'ERROR':
-                    raise Exception('Querying the API resulted in an error.')
-                break
-
             time.sleep(SecurityLayerChecker.__REQUEST_INTERVAL())
-            seconds += SecurityLayerChecker.__REQUEST_INTERVAL()
+           # print(f"seconds (deveria estar incrementado e nunca zero): {seconds}")
+           # print(f"params: {self.__params_request_api}")
 
     def __parse_analysis_result(self):
         if self.__result_from_api is None:
