@@ -2,10 +2,21 @@ import dns.resolver
 from tldextract import extract
 
 
-class DnssecChecker:
-    def __init__(self, uri):
+class DNSSECChecker:
+
+    @staticmethod
+    def get_interface_list():
+        return [
+            "dnssec_domain",
+            "dnssec_nameserver",
+            "has_dnssec",
+            "dnssec_is_valid",
+            "dnssec_algorithm",
+        ]
+
+    def __init__(self, website):
         self.domain = None
-        self.__get_domain__(uri)
+        self.__get_domain__(website)
         self.nameserver = None
         self.ns_ip_address = None
         self.__sec_answer = None

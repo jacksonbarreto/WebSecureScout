@@ -1,21 +1,64 @@
 import re
 import time
+from threading import Lock
 from typing import Type, Dict, Union
 
 import requests
 from requests import Timeout
 
 from helpers.URLValidator.URLValidator import URLValidator
+from helpers.utilities import flatten_dictionary
+
+
+class RequestsAssessments:
+    def __init__(self, interval_between_requests_in_seconds=10) -> None:
+        self.__interval_between_requests_in_seconds = interval_between_requests_in_seconds
+        self.__list: list[Dict[int, float]] = []
+
+    def total_requests(self) -> int:
+        return len(self.__list)
+
+    def get_interval_between_requests_in_seconds(self) -> int:
+        return self.__interval_between_requests_in_seconds
+
+    def add_request(self, id_request: int, time_request: float) -> None:
+        for request in self.__list:
+            if id_request in request.keys():
+                return
+        self.__list.append({id_request: time_request})
+
+    def get_last_time(self) -> float:
+        if len(self.__list) == 0:
+            return 0.0
+        return self.__list[-1][list(self.__list[-1].keys())[0]]
+
+    def remove_request(self, id_request: int) -> None:
+        for request in self.__list:
+            if id_request in request.keys():
+                self.__list.remove(request)
+                break
+
+    def are_there_requests(self) -> bool:
+        return len(self.__list) > 0
+
+    def get_seconds_to_wait(self) -> int:
+        wait_time = self.__interval_between_requests_in_seconds - (time.time() - self.get_last_time())
+        if wait_time > 0:
+            return int(wait_time)
+        else:
+            return self.__interval_between_requests_in_seconds
 
 
 class SecurityLayerChecker:
+    requests_list = RequestsAssessments(interval_between_requests_in_seconds=10)
+    lock = Lock()
 
     @staticmethod
     def get_default_url_base_api() -> str:
         return 'https://api.ssllabs.com/api/v3/analyze/'
 
     @staticmethod
-    def get_default_params_request_api() -> Dict[str, str]:
+    def get_default_params_request_api() -> Dict[str, Union[str, int]]:
         return {
             'host': '',
             'publish': 'on',
@@ -23,6 +66,16 @@ class SecurityLayerChecker:
             'fromCache': 'off',
             'all': 'on'
         }
+
+    @staticmethod
+    def get_interface_list() -> list[str]:
+        """
+          Returns the interface list used to store the results of the SSL/TLS analysis.
+
+          :return: The interface list with the structure for storing the SSL/TLS analysis results.
+          :rtype: list[str]
+        """
+        return list(flatten_dictionary(SecurityLayerChecker.get_interface_dict()))
 
     @staticmethod
     def get_interface_dict() -> Dict[str, Union[str, Dict[str, Union[bool, str]]]]:
@@ -44,13 +97,13 @@ class SecurityLayerChecker:
             },
             'certificate_info': {
                 'dns_caa': False,
-                'issuer': 'Example Issuer',
+                'issuer': '',
                 'key_size': 0,
-                'key_alg': 'Example RSA',
-                'signature_alg': 'Example SHA256withRSA',
+                'key_alg': '',
+                'signature_alg': '',
                 'must_staple': False,
                 'sct': False,
-                'subject': 'Example Subject',
+                'subject': '',
                 'is_valid': False,
                 'cert_chain_trust': False
             },
@@ -107,14 +160,14 @@ class SecurityLayerChecker:
         return description
 
     @staticmethod
-    def __REQUEST_INTERVAL() -> int:
-        return 40
+    def __request_interval() -> int:
+        return 60
 
     @staticmethod
-    def __TIMEOUT_LIMIT() -> int:
-        return 8 * SecurityLayerChecker.__REQUEST_INTERVAL()
+    def __timeout_limit() -> int:
+        return 8 * SecurityLayerChecker.__request_interval()
 
-    def __init__(self, website: str, url_validator: Type[URLValidator] = URLValidator, url_base_api: str = None,
+    def __init__(self, website: str, url_validator: URLValidator = None, url_base_api: str = None,
                  params_request_api: Dict[str, str] = None):
         """
         Initialize a new instance of the SecurityLayerChecker class.
@@ -140,8 +193,8 @@ class SecurityLayerChecker:
         :param str url_base_api: (optional) The base URL of the API to be used to perform the analysis.
         :param dict params_request_api: (optional) The parameters to be included in the API request.
         """
-
-        self.__website = url_validator(website).get_url_without_protocol()
+        self.__url_validator = URLValidator if url_validator is None else url_validator
+        self.__website = self.__url_validator(website).get_url_without_protocol()
         self.__url_base_api = SecurityLayerChecker.get_default_url_base_api() if url_base_api is None else url_base_api
         self.__params_request_api = SecurityLayerChecker.get_default_params_request_api() if \
             params_request_api is None else params_request_api
@@ -151,6 +204,7 @@ class SecurityLayerChecker:
         self.__requests_object = requests.get
         self.__result_from_api = None
         self.__final_result = None
+        self.__uptime = 0
 
     def __request_api(self):
         """
@@ -161,25 +215,78 @@ class SecurityLayerChecker:
         :raises requests.exceptions.RequestException: If there is an issue with the API request.
         :raises exceptions: If querying the API resulted in an error.
         """
-        seconds = 0
+        with SecurityLayerChecker.lock:
+            if SecurityLayerChecker.requests_list.are_there_requests():
+                time.sleep(SecurityLayerChecker.requests_list.get_seconds_to_wait())
+            SecurityLayerChecker.requests_list.add_request(id(self), time.time())
         while True:
-            if seconds > SecurityLayerChecker.__TIMEOUT_LIMIT():
-                raise Timeout(f"The API response time has exceeded the {SecurityLayerChecker.__TIMEOUT_LIMIT()} "
-                              f"second limit.")
-
-            self.__result_from_api = self.__requests_object(url=self.__url_base_api,
-                                                            params=self.__params_request_api).json()
-
-            if seconds == 0:
-                self.__params_request_api['startNew'] = 'off'
+            self.__check_timeout()
+            self.__response = self.__requests_object(url=self.__url_base_api, params=self.__params_request_api)
+            if self.__is_ok_response_status():
+                self.__result_from_api = self.__response.json()
+                break
+            if self.__uptime == 0:
+                del self.__params_request_api['startNew']
                 self.__params_request_api['fromCache'] = 'on'
                 self.__params_request_api['maxAge'] = 1
-            if self.__result_from_api['status'] == 'READY' or self.__result_from_api['status'] == 'ERROR':
-                if self.__result_from_api['status'] == 'ERROR':
-                    raise Exception('Querying the API resulted in an error.')
-                break
-            time.sleep(SecurityLayerChecker.__REQUEST_INTERVAL())
-            seconds += SecurityLayerChecker.__REQUEST_INTERVAL()
+
+            self.__uptime += SecurityLayerChecker.__request_interval()
+            time.sleep(SecurityLayerChecker.__request_interval())
+
+    def __check_timeout(self):
+        if self.__uptime > SecurityLayerChecker.__timeout_limit():
+            raise Timeout(f"The API response time has exceeded the {SecurityLayerChecker.__timeout_limit()} "
+                          f"second limit.")
+
+    def __is_ok_response_status(self) -> bool:
+        """
+        Check the status of the API response.
+
+        :return: True if the response status is 200 and the status of the response is "ready", False otherwise.
+        :raises requests.exceptions.RequestException: If there is an issue with the API request.
+        :raises exceptions: If querying the API resulted in an error.
+        """
+        match self.__response.status_code:
+            case 200:
+                response_json = self.__response.json()
+                if 'status' in response_json:
+                    if (response_json['status']).lower() == 'error':
+                        with SecurityLayerChecker.lock:
+                            SecurityLayerChecker.requests_list.remove_request(id(self))
+                        raise Exception(f"The API request resulted in an error: {self.__response.text}")
+                    elif (response_json['status']).lower() == 'ready':
+                        with SecurityLayerChecker.lock:
+                            SecurityLayerChecker.requests_list.remove_request(id(self))
+                        return True
+                    else:
+                        return False
+                else:
+                    return False
+            case 400:
+                with SecurityLayerChecker.lock:
+                    SecurityLayerChecker.requests_list.remove_request(id(self))
+                raise ValueError(f"The API request is invalid: {self.__response.text}")
+            case 403:
+                with SecurityLayerChecker.lock:
+                    SecurityLayerChecker.requests_list.remove_request(id(self))
+                raise PermissionError(f"The API request is forbidden: {self.__response.text}")
+            case 404:
+                with SecurityLayerChecker.lock:
+                    SecurityLayerChecker.requests_list.remove_request(id(self))
+                raise ValueError(f"The API request is not found: {self.__response.text}")
+            case 429:
+                with SecurityLayerChecker.lock:
+                    SecurityLayerChecker.requests_list.remove_request(id(self))
+                raise Exception(f"The API request has been throttled: {self.__response.text}")
+            case 500:
+                with SecurityLayerChecker.lock:
+                    SecurityLayerChecker.requests_list.remove_request(id(self))
+                raise Exception(
+                    f"The API server encountered an error while processing the request: {self.__response.text}")
+            case _:
+                with SecurityLayerChecker.lock:
+                    SecurityLayerChecker.requests_list.remove_request(id(self))
+                raise Exception(f"An unknown error occurred while querying the API: {self.__response.text}")
 
     def __parse_analysis_result(self):
         if self.__result_from_api is None:
@@ -188,7 +295,8 @@ class SecurityLayerChecker:
         self.__parse_supported_ssl_tls_protocols()
         self.__parse_cert_info()
         self.__parse_vulnerabilities()
-        self.__final_result['grade'] = self.__result_from_api['endpoints'][0]['grade']
+        if 'grade' in self.__result_from_api['endpoints'][0]:
+            self.__final_result['grade'] = self.__result_from_api['endpoints'][0]['grade']
 
     def __parse_supported_ssl_tls_protocols(self):
         if self.__result_from_api is None:
@@ -231,22 +339,23 @@ class SecurityLayerChecker:
         if self.__final_result is None:
             self.__parse_analysis_result()
 
-        cert = self.__result_from_api['certs'][0]
+        if len(self.__result_from_api['certs']) > 0:
+            cert = self.__result_from_api['certs'][0]
 
-        self.__final_result['certificate_info']['dns_caa'] = cert['dnsCaa']
-        self.__final_result['certificate_info']['issuer'] = \
-            SecurityLayerChecker.__get_cn_from_issuer_or_subject(cert['issuerSubject'])
-        self.__final_result['certificate_info']['key_size'] = cert['keySize']
-        self.__final_result['certificate_info']['key_alg'] = cert['keyAlg']
-        self.__final_result['certificate_info']['signature_alg'] = cert['sigAlg']
-        self.__final_result['certificate_info']['must_staple'] = cert['mustStaple']
-        self.__final_result['certificate_info']['sct'] = cert['sct']
-        self.__final_result['certificate_info']['subject'] = \
-            SecurityLayerChecker.__get_cn_from_issuer_or_subject(cert['subject'])
-        if cert['issues'] == 0:
-            self.__final_result['certificate_info']['is_valid'] = True
-        if self.__result_from_api['endpoints'][0]['details']['certChains'][0]['issues'] == 0:
-            self.__final_result['certificate_info']['cert_chain_trust'] = True
+            self.__final_result['certificate_info']['dns_caa'] = cert['dnsCaa']
+            self.__final_result['certificate_info']['issuer'] = \
+                SecurityLayerChecker.__get_cn_from_issuer_or_subject(cert['issuerSubject'])
+            self.__final_result['certificate_info']['key_size'] = cert['keySize']
+            self.__final_result['certificate_info']['key_alg'] = cert['keyAlg']
+            self.__final_result['certificate_info']['signature_alg'] = cert['sigAlg']
+            self.__final_result['certificate_info']['must_staple'] = cert['mustStaple']
+            self.__final_result['certificate_info']['sct'] = cert['sct']
+            self.__final_result['certificate_info']['subject'] = \
+                SecurityLayerChecker.__get_cn_from_issuer_or_subject(cert['subject'])
+            if cert['issues'] == 0:
+                self.__final_result['certificate_info']['is_valid'] = True
+            if self.__result_from_api['endpoints'][0]['details']['certChains'][0]['issues'] == 0:
+                self.__final_result['certificate_info']['cert_chain_trust'] = True
 
     def __parse_vulnerabilities(self):
         if self.__result_from_api is None:
@@ -256,19 +365,21 @@ class SecurityLayerChecker:
 
         details = self.__result_from_api['endpoints'][0]['details']
 
-        self.__final_result['vulnerabilities']['beast'] = details['vulnBeast']
-        self.__final_result['vulnerabilities']['heartbleed'] = details['heartbleed']
-        self.__final_result['vulnerabilities']['poodle'] = details['poodle']
-        self.__final_result['vulnerabilities']['freak'] = details['freak']
-        self.__get_ccs_vulnerability_result_description()
-        self.__get_lucky_minus20_vulnerability_result_description()
-        self.__get_ticket_bleed_vulnerability_result_description()
-        self.__get_bleichenbacher_vulnerability_result_description()
+        self.__get_zero_length_padding_oracle_vulnerability_result_description()
         self.__get_zombie_poodle_vulnerability_result_description()
         self.__get_golden_doodle_vulnerability_result_description()
-        self.__get_zero_length_padding_oracle_vulnerability_result_description()
         self.__get_sleeping_poodle_vulnerability_result_description()
-        self.__get_poodle_tls_vulnerability_result_description()
+
+        if self.__final_result['certificate_info']['is_valid'] is True:
+            self.__final_result['vulnerabilities']['beast'] = details['vulnBeast']
+            self.__final_result['vulnerabilities']['heartbleed'] = details['heartbleed']
+            self.__final_result['vulnerabilities']['poodle'] = details['poodle']
+            self.__final_result['vulnerabilities']['freak'] = details['freak']
+            self.__get_ccs_vulnerability_result_description()
+            self.__get_lucky_minus20_vulnerability_result_description()
+            self.__get_ticket_bleed_vulnerability_result_description()
+            self.__get_bleichenbacher_vulnerability_result_description()
+            self.__get_poodle_tls_vulnerability_result_description()
 
     def __get_ccs_vulnerability_result_description(self):
         vulnerability = self.__result_from_api['endpoints'][0]['details']['openSslCcs']
@@ -430,3 +541,7 @@ class SecurityLayerChecker:
         if self.__final_result is None:
             self.__parse_analysis_result()
         return self.__final_result
+
+    def check_security_layer_in_list(self):
+        result_dict = self.check_security_layer()
+        return flatten_dictionary(result_dict)

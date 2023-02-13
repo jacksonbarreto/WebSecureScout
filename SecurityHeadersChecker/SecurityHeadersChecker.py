@@ -1,6 +1,8 @@
 from typing import Dict, List, Type
 
 import requests
+import urllib3
+
 from helpers.URLValidator.URLValidator import URLValidator
 from helpers.utilities import lowercase_dict_keys, create_dict_from_list
 
@@ -61,6 +63,7 @@ class SecurityHeadersChecker:
         :param header: The header to use for the HTTP requests (defaults to a default header).
         :type header: dict
         """
+        urllib3.disable_warnings()
         self.__website = url_validator(website).get_url_without_protocol()
         self.__headers_to_check = SecurityHeadersChecker.get_owasp_security_headers() if headers_to_check is None \
             else headers_to_check

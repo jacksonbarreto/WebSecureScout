@@ -28,3 +28,14 @@ def create_dict_from_list(keys: List[str]) -> Dict[str, bool]:
     """
     return {key: False for key in keys}
 
+
+def flatten_dictionary(dictionary):
+    flat_dict = {}
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            for nested_key, nested_value in value.items():
+                flat_dict[nested_key] = nested_value
+        else:
+            flat_dict[key] = value
+    return flat_dict
+
