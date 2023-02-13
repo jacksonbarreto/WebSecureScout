@@ -1,77 +1,102 @@
-import traceback
+import os
+from concurrent.futures import ThreadPoolExecutor as PoolExecutor
+from concurrent.futures import as_completed as future_completed
 
-import pandas as pd
-import concurrent.futures
-import os.path
-import threading
+from pandas import DataFrame, Series
+from threading import Lock
 
 
-def scanner(file_name, result_file_name, engine_class, method_for_analysis, keys_interface_list, url_column_name='url',
-            params=None, encoding='utf-8'):
-    if params is None:
-        params = {}
+class ScannerConfig:
+    def __init__(self, engine_class: type, method_for_analysis: str, keys_interface_list: list[str],
+                 url_column_name: str = None, params: dict = None) -> None:
+        self.__engine_class = engine_class
+        self.__method_for_analysis = method_for_analysis
+        self.__keys_interface_list = keys_interface_list
+        self.__url_column_name = 'url' if url_column_name is None else url_column_name
+        self.__params = params if params is not None else {}
 
-    source_df = pd.read_csv(filepath_or_buffer=f'./{file_name}.csv', encoding=encoding, engine='python')
+    def get_engine_class(self) -> type:
+        return self.__engine_class
 
-    errors_dataframe = create_error_dataframe(source_df.columns)
+    def get_method_for_analysis(self) -> str:
+        return self.__method_for_analysis
 
-    keys_dataframe_result = list(source_df.columns)
-    keys_dataframe_result.extend(keys_interface_list)
+    def get_keys_interface_list(self) -> list[str]:
+        return self.__keys_interface_list
 
-    source_df_size = len(source_df)
+    def get_url_column_name(self) -> str:
+        return self.__url_column_name
 
-    result_dataframe = pd.DataFrame(columns=keys_dataframe_result)
+    def get_params(self) -> dict:
+        return self.__params
 
-    lock_result_dataframe = threading.Lock()
-    lock_errors_dataframe = threading.Lock()
 
-    def analyze_row(row, engine, parameters, analysis_method_name, url_column):
+class Scanner:
+    def __init__(self, config: ScannerConfig, source_df: DataFrame) -> None:
+        self.__config = config
+        self.__source_df = source_df
+        self.__params_engine = self.__config.get_params()
+        self.__errors_dataframe = self.__create_error_dataframe(self.__source_df.columns)
+        keys_dataframe_result = list(source_df.columns)
+        keys_dataframe_result.extend(self.__config.get_keys_interface_list())
+        self.__result_dataframe = DataFrame(columns=keys_dataframe_result)
+        self.__lock_result_df = Lock()
+        self.__lock_errors_df = Lock()
+
+    @staticmethod
+    def __create_error_dataframe(columns: list[str]) -> DataFrame:
+        df = DataFrame(columns=columns)
+        df['error'] = ''
+        return df
+
+    @staticmethod
+    def __to_snake_case(camelcase: str) -> str:
+        return ''.join(['_' + i.lower() if i.isupper() else i for i in camelcase]).lstrip('_')
+
+    def __analyze_row(self, row: Series) -> str:
         try:
-            parameters.update({'website': getattr(row, url_column)})
-            engine_instance = engine(**parameters)
-            analysis_method = getattr(engine_instance, analysis_method_name)
-            analysis_result = analysis_method()
-            analysis_result.update({column: getattr(row, column) for column in source_df.columns})
-            with lock_result_dataframe:
-                add_row_to_dataframe(result_dataframe, analysis_result)
+            self.__params_engine.update({'website': getattr(row, self.__config.get_url_column_name())})
+            engine = self.__config.get_engine_class()(**self.__params_engine)
+            results = getattr(engine, self.__config.get_method_for_analysis())()
+            results.update({column: getattr(row, column) for column in self.__source_df.columns})
+            with self.__lock_result_df:
+                self.__result_dataframe.loc[len(self.__result_dataframe)] = results
+            return f'Record {row.Index} - {getattr(row, self.__config.get_url_column_name())} - successfully scanned.'
         except Exception as e:
-            #APAGAR
-            print(e)
-            traceback.print_exc()
-            empty_row = {column: '' for column in keys_interface_list}
-            empty_row.update({column: getattr(row, column) for column in source_df.columns})
-            with lock_result_dataframe:
-                add_row_to_dataframe(result_dataframe, empty_row)
-            with lock_errors_dataframe:
-                add_error_row_to_error_dataframe(errors_dataframe, row, str(e))
+            empty_row = {column: '' for column in self.__config.get_keys_interface_list()}
+            empty_row.update({column: getattr(row, column) for column in self.__source_df.columns})
+            error_row = {column: getattr(row, column) for column in self.__source_df.columns}
+            error_row['error'] = str(e)
+            with self.__lock_result_df:
+                self.__result_dataframe.loc[len(self.__result_dataframe)] = empty_row
+            with self.__lock_errors_df:
+                self.__errors_dataframe.loc[len(self.__errors_dataframe)] = error_row
+            return f'Record {row.Index} - {getattr(row, self.__config.get_url_column_name())} - ERROR: {str(e)}'
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(analyze_row, row, engine_class, params, method_for_analysis, url_column_name) for row
-                   in
-                   source_df.itertuples()]
-        for i, future in enumerate(concurrent.futures.as_completed(futures)):
-            print(f'{engine_class.__name__} - analyzing record {i + 1}/{source_df_size}')
+    def start_analysis(self, save_to_file_on: bool = False, log_on: bool = False) -> dict[str, DataFrame]:
+        if log_on:
+            print(f'Start analysis with {self.__config.get_engine_class().__name__} engine...')
+        with PoolExecutor() as executor:
+            futures = [executor.submit(self.__analyze_row, row) for row in self.__source_df.itertuples()]
+            if log_on:
+                for future in future_completed(futures):
+                    print(future.result())
+        if save_to_file_on:
+            self.__save_result()
+            if log_on:
+                print(f'Results from {self.__config.get_engine_class().__name__} engine saved to file.')
+        if log_on:
+            print(f'Analysis with {self.__config.get_engine_class().__name__} engine completed.')
+        return {
+            'results_dataframe': self.__result_dataframe,
+            'errors_dataframe': self.__errors_dataframe
+        }
 
-    path_results = 'results/'
-    if not os.path.exists(path_results):
-        os.makedirs(path_results)
-    result_dataframe.to_csv(path_or_buf=f'{path_results}{result_file_name}.csv', encoding=encoding, index=False)
-    errors_dataframe.to_csv(path_or_buf=f'{path_results}{result_file_name}_errors.csv', encoding=encoding, index=False)
-
-
-def add_row_to_dataframe(dataframe, new_row):
-    dataframe.loc[len(dataframe)] = new_row
-    return dataframe
-
-
-def add_error_row_to_error_dataframe(dataframe, error_row, error_message):
-    error_row = list(error_row)[1:]
-    error_row.append(error_message)
-    dataframe.loc[len(dataframe)] = error_row
-    return dataframe
-
-
-def create_error_dataframe(columns):
-    dataframe = pd.DataFrame(columns=columns)
-    dataframe['error'] = ''
-    return dataframe
+    def __save_result(self) -> None:
+        path_results = 'results/'
+        if not os.path.exists(path_results):
+            os.makedirs(path_results)
+        result_file_name = f'{path_results}{self.__to_snake_case(self.__config.get_engine_class().__name__)}.csv'
+        error_file_name = result_file_name.replace('.csv', '_errors.csv')
+        self.__result_dataframe.to_csv(result_file_name, index=False)
+        self.__errors_dataframe.to_csv(error_file_name, index=False)

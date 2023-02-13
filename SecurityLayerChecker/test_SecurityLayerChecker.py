@@ -81,7 +81,8 @@ class TestSecurityLayerChecker(unittest.TestCase):
         self.mock_request = MagicMock(spec=requests.get)
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")
-    def test_parse_supported_ssl_tls_protocol(self, mock_request):
+    @patch("SecurityLayerChecker.SecurityLayerChecker.time.sleep", return_value=None)
+    def test_parse_supported_ssl_tls_protocol(self, mock_sleep, mock_request):
         setup_response = [
             {
                 'name': 'TLS',
@@ -113,12 +114,13 @@ class TestSecurityLayerChecker(unittest.TestCase):
         self.assertDictEqual(result['ssl_tls_protocol_support'], expected_result)
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")
-    def test_parse_parse_vulnerabilities(self, mock_request):
+    @patch("SecurityLayerChecker.SecurityLayerChecker.time.sleep", return_value=None)
+    def test_parse_parse_vulnerabilities(self, mock_sleep, mock_request):
         self.mock_response.json.return_value = get_response(vulnBeast=True, poodleTls=3, sleepingPoodle=11)
 
-        self.mock_request.return_value = self.mock_response
+        mock_request.return_value = self.mock_response
 
-        result = self.checker.check_security_layer(requests_object=self.mock_request)
+        result = self.checker.check_security_layer(requests_object=mock_request)
 
         expected_result = {
             'beast': True,
@@ -138,28 +140,32 @@ class TestSecurityLayerChecker(unittest.TestCase):
         self.assertDictEqual(result['vulnerabilities'], expected_result)
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")
-    def test_parse_vulnerabilities_invalid_value_from_api(self, mock_request):
+    @patch("SecurityLayerChecker.SecurityLayerChecker.time.sleep", return_value=None)
+    def test_parse_vulnerabilities_invalid_value_from_api(self, mock_sleep, mock_request):
         self.mock_response.json.return_value = get_response(poodleTls=-8)
         self.mock_request.return_value = self.mock_response
         with self.assertRaises(ValueError):
             self.checker.check_security_layer(requests_object=self.mock_request)
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")
-    def test_parse_openSslCcs_vulnerabilities_invalid_value_from_api(self, mock_request):
+    @patch("SecurityLayerChecker.SecurityLayerChecker.time.sleep", return_value=None)
+    def test_parse_openSslCcs_vulnerabilities_invalid_value_from_api(self, mock_sleep, mock_request):
         self.mock_response.json.return_value = get_response(openSslCcs=5)
         self.mock_request.return_value = self.mock_response
         with self.assertRaises(ValueError):
             self.checker.check_security_layer(requests_object=self.mock_request)
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")
-    def test_parse_ticketbleed_vulnerabilities_invalid_value_from_api(self, mock_request):
+    @patch("SecurityLayerChecker.SecurityLayerChecker.time.sleep", return_value=None)
+    def test_parse_ticketbleed_vulnerabilities_invalid_value_from_api(self, mock_sleep, mock_request):
         self.mock_response.json.return_value = get_response(ticketbleed=5)
         self.mock_request.return_value = self.mock_response
         with self.assertRaises(ValueError):
             self.checker.check_security_layer(requests_object=self.mock_request)
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")
-    def test_parse_cert_info_valid(self, mock_request):
+    @patch("SecurityLayerChecker.SecurityLayerChecker.time.sleep", return_value=None)
+    def test_parse_cert_info_valid(self, mock_sleep, mock_request):
         setup_response = [
             {
                 'subject': "CN=*.badssl.com, O=Lucas Garron Torres, L=Walnut Creek, ST=California, C=US",
@@ -191,7 +197,8 @@ class TestSecurityLayerChecker(unittest.TestCase):
         self.assertDictEqual(result['certificate_info'], expected_result)
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")
-    def test_parse_cert_info_invalid(self, mock_request):
+    @patch("SecurityLayerChecker.SecurityLayerChecker.time.sleep", return_value=None)
+    def test_parse_cert_info_invalid(self, mock_sleep, mock_request):
         setup_response = [
             {
                 'subject': "CN=*.badssl.com, O=Lucas Garron Torres, L=Walnut Creek, ST=California, C=US",
@@ -223,7 +230,8 @@ class TestSecurityLayerChecker(unittest.TestCase):
         self.assertDictEqual(result['certificate_info'], expected_result)
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")
-    def test_parse_cert_chain_info_invalid(self, mock_request):
+    @patch("SecurityLayerChecker.SecurityLayerChecker.time.sleep", return_value=None)
+    def test_parse_cert_chain_info_invalid(self, mock_sleep, mock_request):
         setup_response = [{'issues': 12}]
         self.mock_response.json.return_value = get_response(certChains=setup_response)
         self.mock_request.return_value = self.mock_response
@@ -231,14 +239,16 @@ class TestSecurityLayerChecker(unittest.TestCase):
         self.assertFalse(result['certificate_info']['cert_chain_trust'])
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")
-    def test_parse_issuer_name(self, mock_request):
+    @patch("SecurityLayerChecker.SecurityLayerChecker.time.sleep", return_value=None)
+    def test_parse_issuer_name(self, mock_sleep, mock_request):
         self.mock_response.json.return_value = get_response()
         self.mock_request.return_value = self.mock_response
         result = self.checker.check_security_layer(requests_object=self.mock_request)
         self.assertEqual(result['certificate_info']['issuer'], 'DigiCert SHA2 Secure Server CA')
 
     @patch("SecurityLayerChecker.SecurityLayerChecker.requests.get")
-    def test_parse_subject_name(self, mock_request):
+    @patch("SecurityLayerChecker.SecurityLayerChecker.time.sleep", return_value=None)
+    def test_parse_subject_name(self, mock_sleep, mock_request):
         self.mock_response.json.return_value = get_response()
         self.mock_request.return_value = self.mock_response
         result = self.checker.check_security_layer(requests_object=self.mock_request)
