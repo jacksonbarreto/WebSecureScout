@@ -118,7 +118,7 @@ class HttpsChecker:
                 self.check_https()
             if self.__has_https:
                 response = requests.head(f"http://{self.__website}", headers=self.__header, allow_redirects=False,
-                                         timeout=self.__timeout_limit)
+                                         timeout=self.__timeout_limit, verify=False)
                 lowercase_dict_keys(response.headers)
                 if response.status_code in HttpsChecker.http_redirect_codes() and \
                         "location" in response.headers and response.headers['location'].startswith("https://"):

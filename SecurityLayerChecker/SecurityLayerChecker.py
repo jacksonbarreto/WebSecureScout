@@ -52,6 +52,17 @@ class RequestsAssessments:
 class SecurityLayerChecker:
     requests_list = RequestsAssessments(interval_between_requests_in_seconds=10)
     lock = Lock()
+    max_assessments = 10
+    current_assessments = 0
+    lock_assessments = Lock()
+
+    @classmethod
+    def update_max_assessments(cls, max_assessments: int) -> None:
+        cls.max_assessments = max_assessments
+
+    @classmethod
+    def update_current_assessments(cls, current_assessments: int) -> None:
+        cls.current_assessments = current_assessments
 
     @staticmethod
     def get_default_url_base_api() -> str:
@@ -215,6 +226,16 @@ class SecurityLayerChecker:
         :raises requests.exceptions.RequestException: If there is an issue with the API request.
         :raises exceptions: If querying the API resulted in an error.
         """
+        while True:
+            with SecurityLayerChecker.lock_assessments:
+                if SecurityLayerChecker.current_assessments < SecurityLayerChecker.max_assessments:
+                    break
+                if not SecurityLayerChecker.requests_list.are_there_requests():
+                    break
+            self.__check_timeout()
+            self.__uptime += SecurityLayerChecker.__request_interval()
+            time.sleep(SecurityLayerChecker.__request_interval())
+
         with SecurityLayerChecker.lock:
             if SecurityLayerChecker.requests_list.are_there_requests():
                 time.sleep(SecurityLayerChecker.requests_list.get_seconds_to_wait())
@@ -222,6 +243,9 @@ class SecurityLayerChecker:
         while True:
             self.__check_timeout()
             self.__response = self.__requests_object(url=self.__url_base_api, params=self.__params_request_api)
+            with SecurityLayerChecker.lock_assessments:
+                SecurityLayerChecker.update_max_assessments(int(self.__response.headers.get('X-Max-Assessments')))
+                SecurityLayerChecker.update_current_assessments(int(self.__response.headers.get('X-Current-Assessments')))
             if self.__is_ok_response_status():
                 self.__result_from_api = self.__response.json()
                 break
@@ -232,6 +256,22 @@ class SecurityLayerChecker:
 
             self.__uptime += SecurityLayerChecker.__request_interval()
             time.sleep(SecurityLayerChecker.__request_interval())
+
+    def __can_start_request(self) -> bool:
+        """
+        Check if the request can be started.
+
+        :return: True if the request can be started, False otherwise.
+        """
+        while True:
+            with SecurityLayerChecker.lock_assessments:
+                if SecurityLayerChecker.current_assessments <= SecurityLayerChecker.max_assessments:
+                    break
+                if not SecurityLayerChecker.requests_list.are_there_requests():
+                    break
+            time.sleep(SecurityLayerChecker.__request_interval())
+            self.__uptime += SecurityLayerChecker.__request_interval()
+        return True
 
     def __check_timeout(self):
         if self.__uptime > SecurityLayerChecker.__timeout_limit():
