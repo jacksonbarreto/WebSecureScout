@@ -2,7 +2,7 @@ import dns.resolver
 from tldextract import extract
 
 
-class DNSSECChecker:
+class DnssecChecker:
 
     @staticmethod
     def get_interface_list():

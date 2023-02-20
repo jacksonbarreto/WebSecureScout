@@ -8,7 +8,7 @@ from helpers.URLValidator.URLValidator import URLValidator
 from helpers.utilities import lowercase_dict_keys
 
 
-class HTTPSChecker:
+class HttpsChecker:
     """
     A class to check if a website has HTTPS active, independent of the SSL/TLS certificate validity. This class has
     several public methods to check if HTTPS exists, if there is forced redirection to HTTPS and if the redirection
@@ -18,26 +18,26 @@ class HTTPSChecker:
     @staticmethod
     def get_interface_dict():
         """
-        Returns the interface of the HTTPSChecker class in the form of a dictionary. The dictionary contains keys for
+        Returns the interface of the HttpsChecker class in the form of a dictionary. The dictionary contains keys for
         the different HTTPS-related information stored by the class, such as if the website has HTTPS enabled,
         if there is a forced redirection to HTTPS, and if the redirection is for the same domain.
         """
         return {
-            HTTPSChecker.has_https_key(): None,
-            HTTPSChecker.forced_redirect_key(): None,
-            HTTPSChecker.redirect_same_domain_key(): None}
+            HttpsChecker.has_https_key(): None,
+            HttpsChecker.forced_redirect_key(): None,
+            HttpsChecker.redirect_same_domain_key(): None}
 
     @staticmethod
     def get_interface_list():
         """
-        Returns the interface of the HTTPSChecker class in the form of a list. The list contains keys for the different
+        Returns the interface of the HttpsChecker class in the form of a list. The list contains keys for the different
         HTTPS-related information stored by the class, such as if the website has HTTPS enabled, if there is a forced
         redirection to HTTPS, and if the redirection is for the same domain.
         """
         return [
-            HTTPSChecker.has_https_key(),
-            HTTPSChecker.forced_redirect_key(),
-            HTTPSChecker.redirect_same_domain_key()
+            HttpsChecker.has_https_key(),
+            HttpsChecker.forced_redirect_key(),
+            HttpsChecker.redirect_same_domain_key()
         ]
 
     @staticmethod
@@ -77,7 +77,7 @@ class HTTPSChecker:
     def __init__(self, website, url_validator=URLValidator, timeout_limit=5, header=None):
         self.__website = url_validator(website).get_url_without_protocol()
         self.__timeout_limit = timeout_limit
-        self.__header = HTTPSChecker.default_header() if header is None else header
+        self.__header = HttpsChecker.default_header() if header is None else header
         self.__has_https = None
         self.__has_forced_redirect_to_https = None
         self.__has_forced_redirect_to_same_domain = None
@@ -94,7 +94,7 @@ class HTTPSChecker:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(self.__timeout_limit)
             try:
-                sock.connect((self.__website, HTTPSChecker.default_https_port()))
+                sock.connect((self.__website, HttpsChecker.default_https_port()))
                 sock.shutdown(socket.SHUT_RDWR)
                 self.__has_https = True
             except ConnectionRefusedError:
@@ -120,12 +120,12 @@ class HTTPSChecker:
                 response = requests.head(f"http://{self.__website}", headers=self.__header, allow_redirects=False,
                                          timeout=self.__timeout_limit)
                 lowercase_dict_keys(response.headers)
-                if response.status_code in HTTPSChecker.http_redirect_codes() and \
+                if response.status_code in HttpsChecker.http_redirect_codes() and \
                         "location" in response.headers and response.headers['location'].startswith("https://"):
                     self.__location = response.headers['location']
                     self.__has_forced_redirect_to_https = True
                 elif "strict-transport-security" in response.headers and \
-                        response.status_code == HTTPSChecker.http_status_code_ok():
+                        response.status_code == HttpsChecker.http_status_code_ok():
                     self.__location = "https://" + self.__website
                     self.__has_forced_redirect_to_https = True
                 else:
@@ -161,14 +161,14 @@ class HTTPSChecker:
 
     def get_https_results(self):
         """
-        Returns the HTTPS-related information stored by the HTTPSChecker class in the form of a dictionary. The
+        Returns the HTTPS-related information stored by the HttpsChecker class in the form of a dictionary. The
         dictionary contains keys for the different HTTPS-related information, such as if the website has HTTPS
         enabled, if there is a forced redirection to HTTPS, and if the redirection is for the same domain.
         """
         if self.__has_forced_redirect_to_same_domain is None:
             self.check_forced_redirect_to_same_domain()
-        dictionary = HTTPSChecker.get_interface_dict()
-        dictionary[HTTPSChecker.has_https_key()] = self.__has_https
-        dictionary[HTTPSChecker.forced_redirect_key()] = self.__has_forced_redirect_to_https
-        dictionary[HTTPSChecker.redirect_same_domain_key()] = self.__has_forced_redirect_to_same_domain
+        dictionary = HttpsChecker.get_interface_dict()
+        dictionary[HttpsChecker.has_https_key()] = self.__has_https
+        dictionary[HttpsChecker.forced_redirect_key()] = self.__has_forced_redirect_to_https
+        dictionary[HttpsChecker.redirect_same_domain_key()] = self.__has_forced_redirect_to_same_domain
         return dictionary
