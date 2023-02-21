@@ -2,6 +2,7 @@ import socket
 from typing import Dict
 
 import requests
+import urllib3
 from tldextract import extract
 
 from helpers.URLValidator.URLValidator import URLValidator
@@ -75,6 +76,7 @@ class HttpsChecker:
         return 'https_redirect_to_same_domain'
 
     def __init__(self, website, url_validator=URLValidator, timeout_limit=5, header=None):
+        urllib3.disable_warnings()
         self.__website = url_validator(website).get_url_without_protocol()
         self.__timeout_limit = timeout_limit
         self.__header = HttpsChecker.default_header() if header is None else header

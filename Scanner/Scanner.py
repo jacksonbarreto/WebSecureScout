@@ -61,7 +61,7 @@ class Scanner:
             results.update({column: getattr(row, column) for column in self.__source_df.columns})
             with self.__lock_result_df:
                 self.__result_dataframe.loc[len(self.__result_dataframe)] = results
-            return f'Record {row.Index} - {getattr(row, self.__config.get_url_column_name())} - successfully scanned.'
+            return f'Record {row.Index} - SUCCESSFULLY SCANNED - {getattr(row, self.__config.get_url_column_name())}'
         except Exception as e:
             empty_row = {column: '' for column in self.__config.get_keys_interface_list()}
             empty_row.update({column: getattr(row, column) for column in self.__source_df.columns})
@@ -71,7 +71,7 @@ class Scanner:
                 self.__result_dataframe.loc[len(self.__result_dataframe)] = empty_row
             with self.__lock_errors_df:
                 self.__errors_dataframe.loc[len(self.__errors_dataframe)] = error_row
-            return f'Record {row.Index} - {getattr(row, self.__config.get_url_column_name())} - ERROR: {str(e)}'
+            return f'Record {row.Index} - ERROR - {getattr(row, self.__config.get_url_column_name())} - error_message: {str(e)}'
 
     def start_analysis(self, save_to_file_on: bool = False, log_on: bool = False) -> dict[str, DataFrame]:
         if log_on:

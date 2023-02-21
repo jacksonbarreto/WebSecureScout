@@ -176,7 +176,7 @@ class SecurityLayerChecker:
 
     @staticmethod
     def __timeout_limit() -> int:
-        return 8 * SecurityLayerChecker.__request_interval()
+        return 9 * SecurityLayerChecker.__request_interval()
 
     def __init__(self, website: str, url_validator: URLValidator = None, url_base_api: str = None,
                  params_request_api: Dict[str, str] = None):
@@ -228,12 +228,15 @@ class SecurityLayerChecker:
         """
         while True:
             with SecurityLayerChecker.lock_assessments:
-                if SecurityLayerChecker.current_assessments < SecurityLayerChecker.max_assessments:
-                    break
-                if not SecurityLayerChecker.requests_list.are_there_requests():
-                    break
+                with SecurityLayerChecker.lock:
+                    current = max([(SecurityLayerChecker.current_assessments + 1),
+                                   SecurityLayerChecker.requests_list.total_requests()]) + 2
+                    if current < SecurityLayerChecker.max_assessments:
+                        break
+                    if not SecurityLayerChecker.requests_list.are_there_requests():
+                        break
             self.__check_timeout()
-            self.__uptime += SecurityLayerChecker.__request_interval()
+            self.__uptime += int(SecurityLayerChecker.__request_interval() / 3)
             time.sleep(SecurityLayerChecker.__request_interval())
 
         with SecurityLayerChecker.lock:
@@ -246,6 +249,9 @@ class SecurityLayerChecker:
             with SecurityLayerChecker.lock_assessments:
                 SecurityLayerChecker.update_max_assessments(int(self.__response.headers.get('X-Max-Assessments')))
                 SecurityLayerChecker.update_current_assessments(int(self.__response.headers.get('X-Current-Assessments')))
+                print(f"Max assessments (class/api): {SecurityLayerChecker.max_assessments}/{self.__response.headers.get('X-Max-Assessments')}")
+                print(f"Current assessments (class/api): {SecurityLayerChecker.current_assessments}/{self.__response.headers.get('X-Current-Assessments')}")
+                print(f"Requests list size: {SecurityLayerChecker.requests_list.total_requests()}")
             if self.__is_ok_response_status():
                 self.__result_from_api = self.__response.json()
                 break
@@ -275,6 +281,7 @@ class SecurityLayerChecker:
 
     def __check_timeout(self):
         if self.__uptime > SecurityLayerChecker.__timeout_limit():
+            SecurityLayerChecker.requests_list.remove_request(id(self))
             raise Timeout(f"The API response time has exceeded the {SecurityLayerChecker.__timeout_limit()} "
                           f"second limit.")
 
