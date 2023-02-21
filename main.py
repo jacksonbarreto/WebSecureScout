@@ -44,10 +44,10 @@ if __name__ == "__main__":
     configs = [
         ScannerConfig(engine_class=SecurityHeadersChecker, method_for_analysis='check_security_headers_https',
                       keys_interface_list=SecurityHeadersChecker.get_owasp_security_headers(),
-                      url_column_name=url_column_name, params={'timeout_limit': 60}),
+                      url_column_name=url_column_name, params={'timeout_limit': 180}),
         ScannerConfig(engine_class=HttpsChecker, method_for_analysis='get_https_results',
                       keys_interface_list=HttpsChecker.get_interface_list(), url_column_name=url_column_name,
-                      params={'timeout_limit': 160}),
+                      params={'timeout_limit': 180}),
         ScannerConfig(engine_class=DnssecChecker, method_for_analysis='get_information',
                       keys_interface_list=DnssecChecker.get_interface_list(), url_column_name=url_column_name),
         ScannerConfig(engine_class=SecurityLayerChecker, method_for_analysis='check_security_layer_in_list',
