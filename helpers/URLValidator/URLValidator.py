@@ -46,3 +46,12 @@ class URLValidator:
         :rtype: str
         """
         return self.domain
+
+    def get_url_without_protocol_and_path(self) -> str:
+        """
+        Return the domain of the URL string, without the protocol and the path.
+
+        :return: The domain of the URL string.
+        :rtype: str
+        """
+        return re.sub(r'\/.*', '', self.domain)

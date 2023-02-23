@@ -82,7 +82,6 @@ class URLValidatorTest(unittest.TestCase):
         self.validator = URLValidator('http://8.8.8.8/')
         self.assertEqual(self.validator.get_url_without_protocol(), '8.8.8.8')
 
-
     def test_invalid_ip_address_less_than_4_octets(self):
         with self.assertRaises(ValueError):
             self.validator = URLValidator('http://1.2.3')
@@ -148,6 +147,10 @@ class URLValidatorTest(unittest.TestCase):
     def test_with_slash_at_end(self):
         url_validator = URLValidator('http://example.com/')
         self.assertEqual(url_validator.get_url_without_protocol(), 'example.com')
+
+    def test_url_without_protocol_and_path(self):
+        url_validator = URLValidator('http://example.com/underground/subway')
+        self.assertEqual(url_validator.get_url_without_protocol_and_path(), 'example.com')
 
 
 if __name__ == '__main__':

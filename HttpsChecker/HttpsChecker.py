@@ -1,5 +1,6 @@
 import socket
-from typing import Dict
+import time
+from random import randint
 
 import requests
 import urllib3
@@ -45,8 +46,9 @@ class HttpsChecker:
     def default_header():
         return {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                               'Chrome/108.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,'
-                              'application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,'
-                              'application/signed-exchange;v=b3;q=0.9',
+                                                                          'application/xml;q=0.9,image/avif,'
+                                                                          'image/webp,image/apng,*/*;q=0.8,'
+                                                                          'application/signed-exchange;v=b3;q=0.9',
                 'Upgrade-Insecure-Requests': '1',
                 'Accept-Encoding': 'gzip, deflate', 'Connection': 'keep-alive',
                 'Accept-Language': 'en-GB,en;q=0.9,pt-BR;q=0.8,pt;q=0.7,en-US;q=0.6'}
@@ -75,9 +77,9 @@ class HttpsChecker:
     def redirect_same_domain_key():
         return 'https_redirect_to_same_domain'
 
-    def __init__(self, website, url_validator=URLValidator, timeout_limit=5, header=None):
+    def __init__(self, website, url_validator=URLValidator, timeout_limit=60, header=None):
         urllib3.disable_warnings()
-        self.__website = url_validator(website).get_url_without_protocol()
+        self.__website = url_validator(website).get_url_without_protocol_and_path()
         self.__timeout_limit = timeout_limit
         self.__header = HttpsChecker.default_header() if header is None else header
         self.__has_https = None
@@ -92,6 +94,7 @@ class HttpsChecker:
          Returns:
              bool: A boolean value indicating whether the connection to the website over HTTPS was successful or not.
          """
+
         if self.__has_https is None:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(self.__timeout_limit)
@@ -119,8 +122,8 @@ class HttpsChecker:
             if self.__has_https is None:
                 self.check_https()
             if self.__has_https:
-                response = requests.head(f"http://{self.__website}", headers=self.__header, allow_redirects=False,
-                                         timeout=self.__timeout_limit, verify=False)
+                response = requests.get(f"http://{self.__website}", headers=self.__header, allow_redirects=False,
+                                        timeout=self.__timeout_limit, verify=False)
                 lowercase_dict_keys(response.headers)
                 if response.status_code in HttpsChecker.http_redirect_codes() and \
                         "location" in response.headers and response.headers['location'].startswith("https://"):

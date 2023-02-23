@@ -249,7 +249,6 @@ class SecurityLayerChecker:
             with SecurityLayerChecker.lock_assessments:
                 SecurityLayerChecker.update_max_assessments(int(self.__response.headers.get('X-Max-Assessments')))
                 SecurityLayerChecker.update_current_assessments(int(self.__response.headers.get('X-Current-Assessments')))
-
             if self.__is_ok_response_status():
                 self.__result_from_api = self.__response.json()
                 break
