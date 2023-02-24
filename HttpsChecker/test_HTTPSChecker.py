@@ -28,7 +28,7 @@ class TestHTTPSChecker(unittest.TestCase):
         self.assertCountEqual(interface_dict.keys(), expected_keys)
         self.assertCountEqual(interface_dict.values(), expected_values)
 
-    @patch('HttpsChecker.HttpsChecker.requests.get')
+    @patch('HttpsChecker.HttpsChecker.requests.sessions.Session.get')
     @patch("HttpsChecker.HttpsChecker.time.sleep", return_value=None)
     def test_check_forced_redirect_to_https_with_forced_redirect_HTTPS_by_status_code(self, mock_sleep, mock_request):
         # Test a website with a forced redirect to HTTPS
@@ -36,7 +36,7 @@ class TestHTTPSChecker(unittest.TestCase):
         mock_request.return_value.headers = {'location': 'https://example.com/'}
         self.assertTrue(self.checker.check_forced_redirect_to_https())
 
-    @patch('HttpsChecker.HttpsChecker.requests.get')
+    @patch('HttpsChecker.HttpsChecker.requests.sessions.Session.get')
     @patch("HttpsChecker.HttpsChecker.time.sleep", return_value=None)
     def test_check_forced_redirect_to_https_with_forced_redirect_HTTPS_by_HSTS(self, mock_sleep, mock_request):
         # Test a website with a forced redirect to HTTPS by HSTS
@@ -45,7 +45,7 @@ class TestHTTPSChecker(unittest.TestCase):
         mock_request.return_value.status_code = 200
         self.assertTrue(self.checker.check_forced_redirect_to_https())
 
-    @patch('HttpsChecker.HttpsChecker.requests.get')
+    @patch('HttpsChecker.HttpsChecker.requests.sessions.Session.get')
     @patch("HttpsChecker.HttpsChecker.time.sleep", return_value=None)
     def test_check_forced_redirect_to_https_without_forced_redirect_HTTPS(self, mock_sleep, mock_request):
         # Test a website without a forced redirect to HTTPS
@@ -54,7 +54,7 @@ class TestHTTPSChecker(unittest.TestCase):
 
     @patch('HttpsChecker.HttpsChecker.socket.socket.connect', return_value=None)
     @patch('HttpsChecker.HttpsChecker.socket.socket.shutdown', return_value=None)
-    @patch('HttpsChecker.HttpsChecker.requests.get')
+    @patch('HttpsChecker.HttpsChecker.requests.sessions.Session.get')
     @patch("HttpsChecker.HttpsChecker.time.sleep", return_value=None)
     def test_check_redirect_to_same_domain_with_same_domain(self, mock_sleep, mock_request, mock_shutdown, mock_socket):
         # Test a website with a redirect to the same domain
@@ -64,7 +64,7 @@ class TestHTTPSChecker(unittest.TestCase):
 
     @patch('HttpsChecker.HttpsChecker.socket.socket.connect', return_value=None)
     @patch('HttpsChecker.HttpsChecker.socket.socket.shutdown', return_value=None)
-    @patch('HttpsChecker.HttpsChecker.requests.get')
+    @patch('HttpsChecker.HttpsChecker.requests.sessions.Session.get')
     @patch("HttpsChecker.HttpsChecker.time.sleep", return_value=None)
     def test_check_redirect_to_same_domain_with_other_domain(self, mock_sleep, mock_request, mock_shutdown,
                                                              mock_socket):
@@ -75,7 +75,7 @@ class TestHTTPSChecker(unittest.TestCase):
 
     @patch('HttpsChecker.HttpsChecker.socket.socket.connect', return_value=None)
     @patch('HttpsChecker.HttpsChecker.socket.socket.shutdown', return_value=None)
-    @patch('HttpsChecker.HttpsChecker.requests.get')
+    @patch('HttpsChecker.HttpsChecker.requests.sessions.Session.get')
     @patch("HttpsChecker.HttpsChecker.time.sleep", return_value=None)
     def test_get_https_results(self, mock_sleep, mock_request, mock_shutdown, mock_socket):
         # Test a website with a redirect to a different domain

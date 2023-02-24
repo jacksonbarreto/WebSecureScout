@@ -4,6 +4,7 @@ from random import randint
 
 import requests
 import urllib3
+from requests import ConnectTimeout, ConnectionError
 from tldextract import extract
 
 from helpers.URLValidator.URLValidator import URLValidator
@@ -37,9 +38,11 @@ class HttpsChecker:
         redirection to HTTPS, and if the redirection is for the same domain.
         """
         return [
+            HttpsChecker.has_http_key(),
             HttpsChecker.has_https_key(),
             HttpsChecker.forced_redirect_key(),
-            HttpsChecker.redirect_same_domain_key()
+            HttpsChecker.redirect_same_domain_key(),
+            HttpsChecker.only_https_key()
         ]
 
     @staticmethod
@@ -77,7 +80,15 @@ class HttpsChecker:
     def redirect_same_domain_key():
         return 'https_redirect_to_same_domain'
 
-    def __init__(self, website, url_validator=URLValidator, timeout_limit=60, header=None):
+    @staticmethod
+    def only_https_key():
+        return 'only_https'
+
+    @staticmethod
+    def has_http_key():
+        return 'has_http'
+
+    def __init__(self, website, url_validator=URLValidator, timeout_limit=190, header=None):
         urllib3.disable_warnings()
         self.__website = url_validator(website).get_url_without_protocol_and_path()
         self.__timeout_limit = timeout_limit
@@ -85,6 +96,8 @@ class HttpsChecker:
         self.__has_https = None
         self.__has_forced_redirect_to_https = None
         self.__has_forced_redirect_to_same_domain = None
+        self.__only_https = False
+        self.__has_http = True
         self.__location = None
 
     def check_https(self):
@@ -96,18 +109,33 @@ class HttpsChecker:
          """
 
         if self.__has_https is None:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(self.__timeout_limit)
-            try:
-                sock.connect((self.__website, HttpsChecker.default_https_port()))
-                sock.shutdown(socket.SHUT_RDWR)
-                self.__has_https = True
-            except ConnectionRefusedError:
-                self.__has_https = False
-            except Exception as e:
-                raise e
-            finally:
-                sock.close()
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(self.__timeout_limit)
+                try:
+                    sock.connect((self.__website, HttpsChecker.default_https_port()))
+                    sock.shutdown(socket.SHUT_RDWR)
+                    self.__has_https = True
+                except ConnectionRefusedError:
+                    self.__has_https = False
+                except Exception as e:
+                    try:
+                        if 'www.' not in self.__website:
+                            self.__website = f'www.{self.__website}'
+                            sock.connect((f"{self.__website}", HttpsChecker.default_https_port()))
+                            sock.shutdown(socket.SHUT_RDWR)
+                            self.__has_https = True
+                        else:
+                            raise e
+                    except TimeoutError:
+                        self.__has_https = False
+                    except socket.gaierror:
+                        self.__has_http = False
+                        self.__has_https = False
+                        self.__has_forced_redirect_to_https = False
+                        self.__has_forced_redirect_to_same_domain = False
+                        self.__only_https = False
+                    except Exception as e:
+                        raise e
 
         return self.__has_https
 
@@ -122,19 +150,27 @@ class HttpsChecker:
             if self.__has_https is None:
                 self.check_https()
             if self.__has_https:
-                response = requests.get(f"http://{self.__website}", headers=self.__header, allow_redirects=False,
-                                        timeout=self.__timeout_limit, verify=False)
-                lowercase_dict_keys(response.headers)
-                if response.status_code in HttpsChecker.http_redirect_codes() and \
-                        "location" in response.headers and response.headers['location'].startswith("https://"):
-                    self.__location = response.headers['location']
-                    self.__has_forced_redirect_to_https = True
-                elif "strict-transport-security" in response.headers and \
-                        response.status_code == HttpsChecker.http_status_code_ok():
-                    self.__location = "https://" + self.__website
-                    self.__has_forced_redirect_to_https = True
-                else:
+                try:
+                    session = requests.Session()
+                    session.headers.update(self.__header)
+                    response = session.get(f"http://{self.__website}", allow_redirects=False,
+                                           timeout=self.__timeout_limit)
+                    lowercase_dict_keys(response.headers)
+                    if response.status_code in HttpsChecker.http_redirect_codes() and \
+                            "location" in response.headers and response.headers['location'].startswith("https://"):
+                        self.__location = response.headers['location']
+                        self.__has_forced_redirect_to_https = True
+                    elif "strict-transport-security" in response.headers and \
+                            response.status_code == HttpsChecker.http_status_code_ok():
+                        self.__location = f'https://{self.__website}'
+                        self.__has_forced_redirect_to_https = True
+                    else:
+                        self.__has_forced_redirect_to_https = False
+                except (ConnectionError, ConnectTimeout):
                     self.__has_forced_redirect_to_https = False
+                    self.__has_forced_redirect_to_same_domain = False
+                    self.__only_https = True
+                    self.__has_http = False
             else:
                 self.__has_forced_redirect_to_https = False
         return self.__has_forced_redirect_to_https
@@ -173,7 +209,9 @@ class HttpsChecker:
         if self.__has_forced_redirect_to_same_domain is None:
             self.check_forced_redirect_to_same_domain()
         dictionary = HttpsChecker.get_interface_dict()
+        dictionary[HttpsChecker.has_http_key()] = self.__has_http
         dictionary[HttpsChecker.has_https_key()] = self.__has_https
         dictionary[HttpsChecker.forced_redirect_key()] = self.__has_forced_redirect_to_https
         dictionary[HttpsChecker.redirect_same_domain_key()] = self.__has_forced_redirect_to_same_domain
+        dictionary[HttpsChecker.only_https_key()] = self.__only_https
         return dictionary
