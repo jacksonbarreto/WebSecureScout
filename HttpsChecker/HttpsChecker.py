@@ -1,6 +1,4 @@
 import socket
-import time
-from random import randint
 
 import requests
 import urllib3

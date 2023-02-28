@@ -10,7 +10,7 @@ class TestSecurityHeadersChecker(unittest.TestCase):
 
     def test_check_security_headers_https_all_headers(self):
         # Test with a website that has all the security headers
-        with patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.head') as mock_request:
+        with patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.sessions.Session.get') as mock_request:
             mock_request.return_value.headers = {
                 'strict-transport-security': 'max-age=31536000; includeSubDomains',
                 'x-frame-options': 'DENY',
@@ -39,10 +39,10 @@ class TestSecurityHeadersChecker(unittest.TestCase):
                 'cache-control': True
             })
 
-    @patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.head')
+    @patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.sessions.Session.get')
     def test_check_security_headers_https_some_headers(self, mock_head):
         # Test with a website that has some security headers
-        with patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.head') as mock_request:
+        with patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.sessions.Session.get') as mock_request:
             mock_request.return_value.headers = {
                 'strict-transport-security': 'max-age=31536000',
                 'x-content-type-options': 'nosniff',
@@ -66,7 +66,7 @@ class TestSecurityHeadersChecker(unittest.TestCase):
 
     def test_check_security_headers_http_all_headers(self):
         # Test with a website that has all the security headers
-        with patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.head') as mock_request:
+        with patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.sessions.Session.get') as mock_request:
             mock_request.return_value.headers = {
                 'strict-transport-security': 'max-age=31536000; includeSubDomains',
                 'x-frame-options': 'DENY',
@@ -95,10 +95,10 @@ class TestSecurityHeadersChecker(unittest.TestCase):
                 'cache-control': True
             })
 
-    @patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.head')
+    @patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.sessions.Session.get')
     def test_check_security_headers_http_some_headers(self, mock_head):
         # Test with a website that has some security headers
-        with patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.head') as mock_request:
+        with patch('SecurityHeadersChecker.SecurityHeadersChecker.requests.sessions.Session.get') as mock_request:
             mock_request.return_value.headers = {
                 'strict-transport-security': 'max-age=31536000',
                 'x-content-type-options': 'nosniff',
