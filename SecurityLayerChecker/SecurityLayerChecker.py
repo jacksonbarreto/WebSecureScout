@@ -11,7 +11,7 @@ from helpers.utilities import flatten_dictionary
 
 
 class RequestsAssessments:
-    def __init__(self, interval_between_requests_in_seconds=10) -> None:
+    def __init__(self, interval_between_requests_in_seconds=15) -> None:
         self.__interval_between_requests_in_seconds = interval_between_requests_in_seconds
         self.__list: list[Dict[int, float]] = []
 
@@ -50,7 +50,7 @@ class RequestsAssessments:
 
 
 class SecurityLayerChecker:
-    requests_list = RequestsAssessments(interval_between_requests_in_seconds=10)
+    requests_list = RequestsAssessments(interval_between_requests_in_seconds=20)
     lock = Lock()
     max_assessments = 10
     current_assessments = 0
