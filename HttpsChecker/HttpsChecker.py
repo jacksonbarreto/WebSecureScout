@@ -53,8 +53,9 @@ class HttpsChecker:
                                                                           'image/webp,image/apng,*/*;q=0.8,'
                                                                           'application/signed-exchange;v=b3;q=0.9',
                 'Upgrade-Insecure-Requests': '1',
-                'Accept-Encoding': 'gzip, deflate', 'Connection': 'keep-alive',
-                'Accept-Language': 'en-GB,en;q=0.9,pt-BR;q=0.8,pt;q=0.7,en-US;q=0.6'}
+                'Accept-Encoding': 'gzip, deflate, br', 'Connection': 'keep-alive',
+                'Accept-Language': 'en-GB,en;q=0.9,pt-BR;q=0.8,pt;q=0.7,en-US;q=0.6',
+                'Content-Type': 'text/html; charset=UTF-8'}
 
     @staticmethod
     def http_redirect_codes():
