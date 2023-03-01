@@ -2,7 +2,7 @@ from typing import Dict, List, Type
 
 import requests
 import urllib3
-
+from requests import ConnectTimeout, ConnectionError
 from helpers.URLValidator.URLValidator import URLValidator
 from helpers.utilities import lowercase_dict_keys, create_dict_from_list
 
@@ -44,8 +44,9 @@ class SecurityHeadersChecker:
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,'
                           '*/*;q=0.8, application/signed-exchange;v=b3;q=0.9',
                 'Upgrade-Insecure-Requests': '1',
-                'Accept-Encoding': 'gzip, deflate', 'Connection': 'keep-alive',
-                'Accept-Language': 'en-GB,en;q=0.9,pt-BR;q=0.8,pt;q=0.7,en-US;q=0.6'}
+                'Accept-Encoding': 'gzip, deflate, br', 'Connection': 'keep-alive',
+                'Accept-Language': 'en-GB,en;q=0.9,pt-BR;q=0.8,pt;q=0.7,en-US;q=0.6',
+                'Content-Type': 'text/html; charset=UTF-8'}
 
     def __init__(self, website: str, url_validator: Type[URLValidator] = URLValidator,
                  headers_to_check: List[str] = None, timeout_limit: int = 5, header: dict = None):
@@ -64,7 +65,7 @@ class SecurityHeadersChecker:
         :type header: dict
         """
         urllib3.disable_warnings()
-        self.__website = url_validator(website).get_url_without_protocol()
+        self.__website = url_validator(website).get_url_without_protocol_and_path()
         self.__headers_to_check = SecurityHeadersChecker.get_owasp_security_headers() if headers_to_check is None \
             else headers_to_check
         self.__header = SecurityHeadersChecker.__default_header() if header is None else header
@@ -84,17 +85,26 @@ class SecurityHeadersChecker:
         protocol = protocol.lower()
         if protocol != 'http' and protocol != 'https':
             raise ValueError('Invalid protocol')
+        requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'
+        session = requests.Session()
+        session.headers.update(self.__header)
+        try:
+            response = session.get(f"{protocol}://{self.__website}", allow_redirects=False,
+                                   verify=False, timeout=self.__timeout_limit)
+            lowercase_dict_keys(response.headers)
 
-        response = requests.head(f"{protocol}://{self.__website}", headers=self.__header, allow_redirects=False,
-                                 verify=False, timeout=self.__timeout_limit)
-        lowercase_dict_keys(response.headers)
-
-        for header in self.__headers_to_check:
-            if header in response.headers:
+            for header in self.__headers_to_check:
+                if header in response.headers:
+                    if protocol == 'http':
+                        self.__result_http[header] = True
+                    else:
+                        self.__result_https[header] = True
+        except (ConnectionError, ConnectTimeout):
+            for header in self.__headers_to_check:
                 if protocol == 'http':
-                    self.__result_http[header] = True
+                    self.__result_http[header] = False
                 else:
-                    self.__result_https[header] = True
+                    self.__result_https[header] = False
 
     def check_security_headers_http(self) -> Dict[str, bool]:
         """

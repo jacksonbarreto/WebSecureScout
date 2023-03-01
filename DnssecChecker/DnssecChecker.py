@@ -1,4 +1,5 @@
 import dns.resolver
+import dns.dnssec
 from tldextract import extract
 
 
@@ -43,13 +44,13 @@ class DnssecChecker:
         if self.domain is not None:
             try:
                 self.nameserver = \
-                    self.__get_resolver__().resolve(self.domain, dns.rdatatype.NS, raise_on_no_answer=False).rrset[
-                        0].to_text()
+                    self.__get_resolver__().resolve(self.domain, dns.rdatatype.NS).rrset[0].to_text()
                 self.ns_ip_address = \
-                    self.__get_resolver__().resolve(self.nameserver, dns.rdatatype.A, raise_on_no_answer=False).rrset[
-                        0].to_text()
-            except Exception as e:
-                raise e
+                    self.__get_resolver__().resolve(self.nameserver, dns.rdatatype.A).rrset[0].to_text()
+            except Exception:
+                self.__algorithm_name = ''
+                self.__has_dnssec = False
+                self.__dnssec_is_valid = False
 
     def __set_algorithm_name__(self):
         if self.__sec_answer is not None:
@@ -61,7 +62,8 @@ class DnssecChecker:
     def __get_resolver__(nameserver='8.8.8.8'):
         resolver = dns.resolver.Resolver()
         resolver.nameservers = ([nameserver])
-        resolver.lifetime = 10
+        resolver.lifetime = 15.0
+        resolver.timeout = 20.0
         resolver.use_edns(0, dns.flags.CD | dns.flags.DO | dns.flags.RD, 4096)
         return resolver
 
@@ -78,9 +80,7 @@ class DnssecChecker:
     def __has_dnssec__(self):
         if self.domain is not None:
             try:
-                self.__sec_answer = self.__get_resolver__(self.ns_ip_address).resolve(self.domain,
-                                                                                      dns.rdatatype.DNSKEY,
-                                                                                      raise_on_no_answer=False)
+                self.__sec_answer = self.__get_resolver__(self.ns_ip_address).resolve(self.domain, dns.rdatatype.DNSKEY)
                 if len(self.__sec_answer) == 2:
                     return True
                 else:
