@@ -26,6 +26,7 @@ class DnssecChecker:
         self.__has_dnssec = False
         self.__dnssec_is_valid = False
         self.__resolver = None
+        self.timeout = 20.0
 
     def __check__(self):
         self.__get_ns__()
@@ -54,16 +55,20 @@ class DnssecChecker:
 
     def __set_algorithm_name__(self):
         if self.__dnskeys is not None:
-            dns_key_text = str(self.__dnskeys[0])
-            algorithm_code = dns_key_text.split(" ")[2]
-            self.__algorithm_name = dns.dnssec.algorithm_from_text(algorithm_code).name
+            algos = set()
+            for dns_record in self.__dnskeys:
+                dns_key_text = str(dns_record)
+                algorithm_code = dns_key_text.split(" ")[2]
+                algos.add(dns.dnssec.algorithm_from_text(algorithm_code).name)
+
+            self.__algorithm_name = '|'.join(algos)
 
     @staticmethod
     def __get_resolver__(nameserver='8.8.8.8'):
         resolver = dns.resolver.Resolver()
         resolver.nameservers = ([nameserver])
         resolver.lifetime = 15.0
-        resolver.timeout = 20.0
+        resolver.timeout = self.timeout
         resolver.use_edns(0, dns.flags.CD | dns.flags.DO | dns.flags.RD, 4096)
         return resolver
 
@@ -82,7 +87,7 @@ class DnssecChecker:
             try:
                 req = dns.message.make_query(self.domain, dns.rdatatype.DNSKEY, want_dnssec=True)
 
-                self.__sec_response= dns.query.udp_with_fallback(req, self.ns_ip_address, timeout=20.0)
+                self.__sec_response= dns.query.udp_with_fallback(req, self.ns_ip_address, timeout=self.timeout)
                 self.__dnskeys, self.__dnssigs = self.__sec_response[0].answer
 
                 if self.__dnskeys and self.__dnssigs:
@@ -101,12 +106,3 @@ class DnssecChecker:
         except Exception as e:
             #print(e)
             return False
-
-if __name__ == "__main__":
-    domains = ["www.kit.edu", 'www.fau.de', 'www.tu.berlin']
-    #domains = ["www.ku.de","www.uni-stuttgart.de","www.filmuniversitaet.de","www.tuhh.de","www.uni-wh.de","www.tu-chemnitz.de","www.hs-coburg.de","www.hs-kempten.de","www.hm.edu","www.th-nuernberg.de","www.th-rosenheim.de","www.ksh-muenchen.de","www.tum.de"]
-    for domain in domains:
-        d = DnssecChecker(domain)
-        print(d.get_information())
-        print()
-        print()
