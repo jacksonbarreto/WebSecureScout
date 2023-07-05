@@ -20,7 +20,8 @@ class DnssecChecker:
         self.__get_domain__(website)
         self.nameserver = None
         self.ns_ip_address = None
-        self.__sec_answer = None
+        self.__dnskeys = None
+        self.__dnssigs = None
         self.__algorithm_name = None
         self.__has_dnssec = False
         self.__dnssec_is_valid = False
@@ -30,9 +31,9 @@ class DnssecChecker:
         self.__get_ns__()
         if self.__has_dnssec__():
             self.__has_dnssec = True
+            self.__set_algorithm_name__()
             if self.__dnssec_is_valid__():
                 self.__dnssec_is_valid = True
-                self.__set_algorithm_name__()
         return self
 
     def __get_domain__(self, domain_name_raw):
@@ -47,14 +48,13 @@ class DnssecChecker:
                     self.__get_resolver__().resolve(self.domain, dns.rdatatype.NS).rrset[0].to_text()
                 self.ns_ip_address = \
                     self.__get_resolver__().resolve(self.nameserver, dns.rdatatype.A).rrset[0].to_text()
-            except Exception:
-                self.__algorithm_name = ''
-                self.__has_dnssec = False
-                self.__dnssec_is_valid = False
+            except Exception as e:
+                #print(e)
+                pass
 
     def __set_algorithm_name__(self):
-        if self.__sec_answer is not None:
-            dns_key_text = self.__sec_answer.rrset[0].to_text()
+        if self.__dnskeys is not None:
+            dns_key_text = str(self.__dnskeys[0])
             algorithm_code = dns_key_text.split(" ")[2]
             self.__algorithm_name = dns.dnssec.algorithm_from_text(algorithm_code).name
 
@@ -80,23 +80,33 @@ class DnssecChecker:
     def __has_dnssec__(self):
         if self.domain is not None:
             try:
-                self.__sec_answer = self.__get_resolver__(self.ns_ip_address).resolve(self.domain, dns.rdatatype.DNSKEY)
-                if len(self.__sec_answer) == 2:
+                req = dns.message.make_query(self.domain, dns.rdatatype.DNSKEY, want_dnssec=True)
+
+                self.__sec_response= dns.query.udp_with_fallback(req, self.ns_ip_address, timeout=20.0)
+                self.__dnskeys, self.__dnssigs = self.__sec_response[0].answer
+
+                if self.__dnskeys and self.__dnssigs:
                     return True
                 else:
                     return False
-            except Exception:
+            except Exception as e:
+                #print(e)
                 return False
 
     def __dnssec_is_valid__(self):
         try:
             q_name = dns.name.from_text(self.domain)
-            server = self.__get_resolver__(self.ns_ip_address).resolve(self.nameserver, dns.rdatatype.A).rrset[
-                0].to_text()
-            q_sec = dns.message.make_query(q_name, dns.rdatatype.DNSKEY, want_dnssec=True)
-            r_sec = dns.query.udp(q_sec, server)
-            a_sec = r_sec.answer
-            dns.dnssec.validate(a_sec[0], a_sec[1], {q_name: a_sec[0]})
+            dns.dnssec.validate(self.__dnskeys, self.__dnssigs,{q_name: self.__dnskeys})
             return True
-        except Exception:
+        except Exception as e:
+            #print(e)
             return False
+
+if __name__ == "__main__":
+    domains = ["www.kit.edu", 'www.fau.de', 'www.tu.berlin']
+    #domains = ["www.ku.de","www.uni-stuttgart.de","www.filmuniversitaet.de","www.tuhh.de","www.uni-wh.de","www.tu-chemnitz.de","www.hs-coburg.de","www.hs-kempten.de","www.hm.edu","www.th-nuernberg.de","www.th-rosenheim.de","www.ksh-muenchen.de","www.tum.de"]
+    for domain in domains:
+        d = DnssecChecker(domain)
+        print(d.get_information())
+        print()
+        print()
