@@ -20,19 +20,21 @@ class DnssecChecker:
         self.__get_domain__(website)
         self.nameserver = None
         self.ns_ip_address = None
-        self.__sec_answer = None
+        self.__dnskeys = None
+        self.__dnssigs = None
         self.__algorithm_name = None
         self.__has_dnssec = False
         self.__dnssec_is_valid = False
         self.__resolver = None
+        self.timeout = 20.0
 
     def __check__(self):
         self.__get_ns__()
         if self.__has_dnssec__():
             self.__has_dnssec = True
+            self.__set_algorithm_name__()
             if self.__dnssec_is_valid__():
                 self.__dnssec_is_valid = True
-                self.__set_algorithm_name__()
         return self
 
     def __get_domain__(self, domain_name_raw):
@@ -47,23 +49,26 @@ class DnssecChecker:
                     self.__get_resolver__().resolve(self.domain, dns.rdatatype.NS).rrset[0].to_text()
                 self.ns_ip_address = \
                     self.__get_resolver__().resolve(self.nameserver, dns.rdatatype.A).rrset[0].to_text()
-            except Exception:
-                self.__algorithm_name = ''
-                self.__has_dnssec = False
-                self.__dnssec_is_valid = False
+            except Exception as e:
+                #print(e)
+                pass
 
     def __set_algorithm_name__(self):
-        if self.__sec_answer is not None:
-            dns_key_text = self.__sec_answer.rrset[0].to_text()
-            algorithm_code = dns_key_text.split(" ")[2]
-            self.__algorithm_name = dns.dnssec.algorithm_from_text(algorithm_code).name
+        if self.__dnskeys is not None:
+            algos = set()
+            for dns_record in self.__dnskeys:
+                dns_key_text = str(dns_record)
+                algorithm_code = dns_key_text.split(" ")[2]
+                algos.add(dns.dnssec.algorithm_from_text(algorithm_code).name)
+
+            self.__algorithm_name = '|'.join(algos)
 
     @staticmethod
     def __get_resolver__(nameserver='8.8.8.8'):
         resolver = dns.resolver.Resolver()
         resolver.nameservers = ([nameserver])
         resolver.lifetime = 15.0
-        resolver.timeout = 20.0
+        resolver.timeout = self.timeout
         resolver.use_edns(0, dns.flags.CD | dns.flags.DO | dns.flags.RD, 4096)
         return resolver
 
@@ -80,23 +85,24 @@ class DnssecChecker:
     def __has_dnssec__(self):
         if self.domain is not None:
             try:
-                self.__sec_answer = self.__get_resolver__(self.ns_ip_address).resolve(self.domain, dns.rdatatype.DNSKEY)
-                if len(self.__sec_answer) == 2:
+                req = dns.message.make_query(self.domain, dns.rdatatype.DNSKEY, want_dnssec=True)
+
+                self.__sec_response= dns.query.udp_with_fallback(req, self.ns_ip_address, timeout=self.timeout)
+                self.__dnskeys, self.__dnssigs = self.__sec_response[0].answer
+
+                if self.__dnskeys and self.__dnssigs:
                     return True
                 else:
                     return False
-            except Exception:
+            except Exception as e:
+                #print(e)
                 return False
 
     def __dnssec_is_valid__(self):
         try:
             q_name = dns.name.from_text(self.domain)
-            server = self.__get_resolver__(self.ns_ip_address).resolve(self.nameserver, dns.rdatatype.A).rrset[
-                0].to_text()
-            q_sec = dns.message.make_query(q_name, dns.rdatatype.DNSKEY, want_dnssec=True)
-            r_sec = dns.query.udp(q_sec, server)
-            a_sec = r_sec.answer
-            dns.dnssec.validate(a_sec[0], a_sec[1], {q_name: a_sec[0]})
+            dns.dnssec.validate(self.__dnskeys, self.__dnssigs,{q_name: self.__dnskeys})
             return True
-        except Exception:
+        except Exception as e:
+            #print(e)
             return False
