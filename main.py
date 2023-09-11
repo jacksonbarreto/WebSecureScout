@@ -4,6 +4,7 @@ import os
 
 import pandas as pd
 
+from AxfrChecker.AxfrChecker import AxfrChecker
 from DnssecChecker.DnssecChecker import DnssecChecker
 from HttpsChecker.HttpsChecker import HttpsChecker
 from Scanner.Scanner import Scanner, ScannerConfig
@@ -50,6 +51,8 @@ if __name__ == "__main__":
                       params={'timeout_limit': 180}),
         ScannerConfig(engine_class=DnssecChecker, method_for_analysis='get_information',
                       keys_interface_list=DnssecChecker.get_interface_list(), url_column_name=url_column_name),
+        ScannerConfig(engine_class=AxfrChecker, method_for_analysis='get_information',
+                      keys_interface_list=AxfrChecker.get_interface_list(), url_column_name=url_column_name),
         ScannerConfig(engine_class=SecurityLayerChecker, method_for_analysis='check_security_layer_in_list',
                       keys_interface_list=SecurityLayerChecker.get_interface_list(), url_column_name=url_column_name)
     ]
